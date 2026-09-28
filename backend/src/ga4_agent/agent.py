@@ -34,7 +34,9 @@ class Agent:
             usage += turn.usage
 
             if turn.stop_reason == "end_turn":
-                new_messages.append({"role": "assistant", "content": turn.content})
+                # An empty reply (possible after a tool result) would make every later request invalid.
+                if turn.content:
+                    new_messages.append({"role": "assistant", "content": turn.content})
                 break
             if turn.stop_reason != "tool_use":
                 # max_tokens, refusal...: the reply may hold a truncated tool call, so it is not kept.

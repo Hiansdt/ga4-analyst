@@ -39,7 +39,13 @@ watch(
     <p v-if="notice" class="notice" role="status">{{ notice }}</p>
     <EmptyState v-if="!turns.length" @ask="ask" />
     <section v-else class="log" role="log" aria-live="polite">
-      <TurnView v-for="(turn, index) in turns" :key="index" :turn="turn" />
+      <TurnView
+        v-for="(turn, index) in turns"
+        :key="index"
+        :turn="turn"
+        :show-follow-ups="index === turns.length - 1 && !busy"
+        @ask="ask"
+      />
     </section>
     <div ref="end" />
   </main>

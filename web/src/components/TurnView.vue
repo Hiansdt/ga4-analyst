@@ -4,7 +4,8 @@ import { isNarration, type Turn } from '../chat/turn'
 import MarkdownText from './MarkdownText.vue'
 import QueryStep from './QueryStep.vue'
 
-defineProps<{ turn: Turn }>()
+defineProps<{ turn: Turn; showFollowUps: boolean }>()
+const emit = defineEmits<{ ask: [question: string] }>()
 
 // TODO(ui-harden): Add a "Try again" button on a failed turn that re-sends its question
 // WHY: after a failure the user has to retype the question from memory
@@ -32,6 +33,16 @@ const ChartBlock = defineAsyncComponent(() => import('./ChartBlock.vue'))
       <p v-if="turn.status === 'failed'" class="failed" role="alert">
         {{ turn.error }} You can ask again.
       </p>
+      <div
+        v-if="showFollowUps && turn.status === 'done' && turn.followUps?.length"
+        class="follow-ups"
+        role="group"
+        aria-label="Suggested next questions"
+      >
+        <button v-for="question in turn.followUps" :key="question" type="button" @click="emit('ask', question)">
+          {{ question }}
+        </button>
+      </div>
     </div>
   </article>
 </template>
@@ -73,6 +84,38 @@ const ChartBlock = defineAsyncComponent(() => import('./ChartBlock.vue'))
   border-radius: 6px;
   padding: 0.6rem 0.8rem;
   margin-top: 0.75rem;
+}
+
+.follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+}
+
+.follow-ups button {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  text-align: left;
+  color: var(--ink-secondary);
+  background: var(--surface-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: 7px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.follow-ups button:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.follow-ups button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 @keyframes breathe {

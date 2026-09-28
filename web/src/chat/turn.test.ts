@@ -61,6 +61,17 @@ describe('applyEvent', () => {
     ])
   })
 
+  it('keeps follow-up suggestions on the turn instead of as a step', () => {
+    const questions = ['Break down cart drop-off by device', 'Compare December with January']
+    const turn = apply([
+      { type: 'tool_started', tool_use_id: 's', name: 'suggest_follow_ups', input: { questions } },
+      { type: 'tool_finished', tool_use_id: 's', name: 'suggest_follow_ups', is_error: false, display: { questions } } as AgentEvent,
+    ])
+
+    expect(turn.blocks).toEqual([])
+    expect(turn.followUps).toEqual(questions)
+  })
+
   it('keeps failed queries visible with their error', () => {
     const turn = apply([
       { type: 'tool_started', tool_use_id: 'a', name: 'run_sql', input: { sql: 'SELEC' } },

@@ -38,6 +38,8 @@ def render(event: Event) -> None:
             print(f"\n{DIM}  calling {name}{RESET}")
         case ToolFinished(is_error=True, display=display):
             print(f"{RED}  failed: {display.get('error')}{RESET}")
+        case ToolFinished(name="suggest_follow_ups", display=suggestions):
+            print(f"{DIM}  suggested: {' | '.join(suggestions['questions'])}{RESET}")
         case ToolFinished(name="create_chart", display=chart):
             print(f"{DIM}  [{chart['type']} chart: {chart['title']} ({len(chart['rows'])} points)]{RESET}\n")
         case ToolFinished(display=display):

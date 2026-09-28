@@ -25,6 +25,10 @@ export interface QueryDisplay {
   error?: string
 }
 
+export interface FollowUpsDisplay {
+  questions: string[]
+}
+
 export interface Usage {
   input_tokens: number
   output_tokens: number
@@ -40,7 +44,7 @@ export type AgentEvent =
       tool_use_id: string
       name: string
       is_error: boolean
-      display: QueryDisplay | ChartSpec | { error: string }
+      display: QueryDisplay | ChartSpec | FollowUpsDisplay | { error: string }
     }
   | { type: 'turn_failed'; message: string }
   | { type: 'turn_completed'; usage: Usage }

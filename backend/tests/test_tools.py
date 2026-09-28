@@ -11,6 +11,7 @@ from ga4_agent.tools import (
     compiled_query_tool,
     create_chart_tool,
     run_sql_tool,
+    suggest_follow_ups_tool,
 )
 
 
@@ -216,3 +217,20 @@ def test_compiled_queries_are_labeled_from_their_input():
     output = ToolRegistry([tool]).run("count_days", {"days": 3}, TurnContext())
 
     assert output.display["label"] == "First 3 days"
+
+
+def test_follow_up_suggestions_are_shown_to_the_user():
+    registry = ToolRegistry([suggest_follow_ups_tool()])
+    questions = ["Break down cart drop-off by device", "Compare December with January"]
+
+    output = registry.run("suggest_follow_ups", {"questions": questions}, TurnContext())
+
+    assert not output.is_error
+    assert output.display == {"questions": questions}
+
+
+def test_follow_up_suggestions_are_few_and_short():
+    registry = ToolRegistry([suggest_follow_ups_tool()])
+
+    assert registry.run("suggest_follow_ups", {"questions": ["Only one"]}, TurnContext()).is_error
+    assert registry.run("suggest_follow_ups", {"questions": ["x" * 101, "Short"]}, TurnContext()).is_error

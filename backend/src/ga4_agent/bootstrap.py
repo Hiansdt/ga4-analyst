@@ -13,7 +13,13 @@ from ga4_agent.datasets import ga4, ga4_metrics
 from ga4_agent.prompt import build_system_prompt
 from ga4_agent.ratelimit import RateLimiter
 from ga4_agent.store import InMemoryStore
-from ga4_agent.tools import ToolRegistry, compiled_query_tool, create_chart_tool, run_sql_tool
+from ga4_agent.tools import (
+    ToolRegistry,
+    compiled_query_tool,
+    create_chart_tool,
+    run_sql_tool,
+    suggest_follow_ups_tool,
+)
 
 
 def build_agent(settings: Settings) -> Agent:
@@ -41,7 +47,14 @@ def build_agent(settings: Settings) -> Agent:
     )
     return Agent(
         model=model,
-        tools=ToolRegistry([metrics, run_sql_tool(runner, preview_rows=settings.preview_rows), create_chart_tool()]),
+        tools=ToolRegistry(
+            [
+                metrics,
+                run_sql_tool(runner, preview_rows=settings.preview_rows),
+                create_chart_tool(),
+                suggest_follow_ups_tool(),
+            ]
+        ),
         system_prompt=build_system_prompt(ga4.CONTEXT),
         max_steps=settings.max_agent_steps,
     )

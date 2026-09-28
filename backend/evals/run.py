@@ -88,12 +88,14 @@ def run_case(agent: Agent, model: str, case: Case) -> Outcome:
 
 
 def print_scorecard(outcomes: list[Outcome]) -> None:
-    print(f"\n{'model':<18} {'case':<26} {'result':<6} {'queries':>7} {'metrics':>7} {'secs':>6} {'cost':>7}  failures")
+    print(
+        f"\n{'model':<18} {'case':<26} {'result':<6} {'queries':>7} {'metrics':>7} {'follow':>6} {'secs':>6} {'cost':>7}  failures"
+    )
     for o in outcomes:
         queries = f"{o.queries}" + (f" ({o.failed_queries}x)" if o.failed_queries else "")
         result = "PASS" if o.passed else "FAIL"
         print(
-            f"{o.model:<18} {o.case:<26} {result:<6} {queries:>7} {o.tools.count('query_metrics'):>7} {o.seconds:>6} "
+            f"{o.model:<18} {o.case:<26} {result:<6} {queries:>7} {o.tools.count('query_metrics'):>7} {'yes' if 'suggest_follow_ups' in o.tools else 'no':>6} {o.seconds:>6} "
             f"${o.cost_usd:>6.3f}  {'; '.join(o.failures)}"
         )
     for model in dict.fromkeys(o.model for o in outcomes):

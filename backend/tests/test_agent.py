@@ -118,3 +118,14 @@ def test_token_usage_is_summed_across_steps():
     events = list(make_agent(ScriptedModel(first, second)).run_turn([], "Query"))
 
     assert events[-1].usage == Usage(220, 30, 90, 90)
+
+
+def test_an_empty_final_reply_is_not_kept_so_the_next_request_stays_valid():
+    # The API rejects empty content in any message but the last, which would break the next question.
+    model = ScriptedModel(sql_call("a", "SELECT 1"), ModelTurn(content=[], stop_reason="end_turn"), answer("Sure."))
+    agent = make_agent(model)
+
+    first = list(agent.run_turn([], "Hi"))[-1]
+    list(agent.run_turn(first.messages, "Again?"))
+
+    assert all(message["content"] for message in model.requests[-1]["messages"])

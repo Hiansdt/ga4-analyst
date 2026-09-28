@@ -1,7 +1,7 @@
 // One question and its answer as the UI shows it, built by folding agent events in order.
 // Live streaming and reloaded conversations both go through applyEvent.
 
-import type { AgentEvent, ChartSpec, Column, QueryDisplay, Row, StoredTurn } from '../api/types'
+import type { AgentEvent, ChartSpec, Column, FollowUpsDisplay, QueryDisplay, Row, StoredTurn } from '../api/types'
 
 export type Block =
   | { kind: 'text'; text: string }
@@ -24,10 +24,13 @@ export interface Turn {
   blocks: Block[]
   status: 'streaming' | 'done' | 'failed'
   error?: string
+  followUps?: string[] // next questions the model suggested, shown as buttons
 }
 
 // Tools whose results are query steps. query_metrics writes its SQL on the server, so it arrives when the step finishes.
 const QUERY_TOOLS = new Set(['run_sql', 'query_metrics'])
+// Suggestions belong to the turn, not to its steps.
+const FOLLOW_UPS_TOOL = 'suggest_follow_ups'
 
 export function newTurn(question: string): Turn {
   return { question, blocks: [], status: 'streaming' }
@@ -43,6 +46,7 @@ export function applyEvent(turn: Turn, event: AgentEvent): Turn {
       return { ...turn, blocks: [...turn.blocks, { kind: 'text', text: event.text }] }
     }
     case 'tool_started': {
+      if (event.name === FOLLOW_UPS_TOOL) return turn
       const block: Block =
         QUERY_TOOLS.has(event.name)
           ? {
@@ -56,6 +60,9 @@ export function applyEvent(turn: Turn, event: AgentEvent): Turn {
       return { ...turn, blocks: [...turn.blocks, block] }
     }
     case 'tool_finished':
+      if (event.name === FOLLOW_UPS_TOOL) {
+        return event.is_error ? turn : { ...turn, followUps: (event.display as FollowUpsDisplay).questions }
+      }
       return { ...turn, blocks: turn.blocks.flatMap((block) => finishBlock(block, event)) }
     case 'turn_failed':
       return { ...turn, status: 'failed', error: event.message }

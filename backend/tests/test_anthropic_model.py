@@ -4,7 +4,7 @@ import os
 
 import anthropic
 import pytest
-from fakes import FakeRunner, daily_result
+from fakes import FakeRunner, daily_result, tool_use
 
 from ga4_agent.adapters.anthropic import AnthropicModel
 from ga4_agent.agent import Agent
@@ -37,3 +37,19 @@ def test_tool_loop_history_round_trips_through_the_api():
     assert any(isinstance(e, TextDelta) for e in second)
     assert isinstance(second[-1], TurnCompleted)
     assert second[-1].messages[-1]["role"] == "assistant"
+
+
+def test_a_question_after_a_turn_that_ended_on_a_tool_result_is_accepted():
+    # The loop drops an empty final reply, so the next question follows the tool result directly.
+    tools = ToolRegistry([run_sql_tool(FakeRunner(daily_result(3)), preview_rows=10)])
+    history = [
+        {"role": "user", "content": "How many days are there?"},
+        {"role": "assistant", "content": [tool_use("a", "run_sql", sql="SELECT 1", purpose="Days")]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "a", "content": "3 days"}]},
+        {"role": "user", "content": "Thanks. Reply with just the number."},
+    ]
+    model = AnthropicModel(anthropic.Anthropic(), model="claude-haiku-4-5", max_tokens=50, effort=None)
+
+    *_, turn = model.stream_turn(system="Be brief.", tools=tools.definitions(), messages=history, allow_tools=False)
+
+    assert turn.stop_reason == "end_turn"
