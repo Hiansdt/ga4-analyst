@@ -29,6 +29,8 @@ Found while exploring the data. They are baked into the system prompt so every a
 
 - **Python + FastAPI backend.** The server is a thin layer: a few endpoints that stream agent steps over SSE, with request validation from Pydantic. The agent logic lives in plain modules that don't depend on the framework.
 - **Synchronous backend, no `async`.** The agent loop is a plain generator that yields step events, and FastAPI streams it from a worker thread. The Anthropic and BigQuery calls block, and a blocking call inside `async def` would freeze every request on the server. Writing everything sync removes that risk and keeps the loop easy to read and test. The thread pool handles far more concurrent chats than this app will see.
+- **The server owns conversations, behind a `ConversationStore` interface.** The API is shaped like a chat product (create a conversation, post a message, reload a conversation), so adding saved chat history later means one new store class and no contract change. The current implementation is in-memory, so Cloud Run runs a single always-on instance. A database-backed store is the first item under "40 hours".
+- **Charts are built from stored query results, not from numbers the model writes.** The model picks a result, a chart type and columns; the server attaches the rows. Every number on a chart comes straight from BigQuery. Rendering uses Apache ECharts, which has a native funnel chart.
 - **Vue 3 + Vite + TypeScript frontend,** with hand-written components and no UI kit. Vue is the framework I know best, which matters for the live extension.
 - **Claude Sonnet 5 for answers.** Correct SQL over GA4's nested schema matters more than per-query cost, so answers use a strong model. A cheaper model (Haiku) is used only while building the plumbing. The model is set by `ANTHROPIC_MODEL`.
 - **No service-account keys.** Locally, the app uses ADC with service-account impersonation. On Cloud Run, the service account is attached to the service. Either way no credential file can leak, and the app always runs as a least-privilege account that has only BigQuery Job User.
@@ -46,4 +48,5 @@ _Filled in during the build._
 ## With another 40 hours
 
 - Statistical analysis (significance tests, forecasting) through a vendor code-execution sandbox fed with query results.
+- Persistent conversations (Firestore or Postgres store) with a history sidebar. It also lifts the single-instance limit on Cloud Run.
 - A curated data layer: deduplicated `orders` and `sessions` tables built on a schedule. SQL gets simpler and cheaper, and metric definitions live in one place instead of in the prompt.
