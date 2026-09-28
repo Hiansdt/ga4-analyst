@@ -97,6 +97,9 @@ user_funnel AS (
   GROUP BY user_pseudo_id
 )"""
 
+# TODO(prompt-tuning): Keep placeholder channels out of rankings and headlines, and explain self-referral traffic
+# WHY: Haiku led a channel answer with "(data deleted) converts best" and read shop.googlemerchandisestore.com as "internal promotion"
+# DONE-WHEN: an eval case "Which acquisition channel converts best?" passes on both models with a check that "(data deleted)" and "<Other>" are not the first channel named
 CONTEXT = f"""\
 # The data
 
