@@ -9,7 +9,7 @@ from ga4_agent.agent import Agent
 from ga4_agent.config import Settings
 from ga4_agent.datasets import ga4
 from ga4_agent.prompt import build_system_prompt
-from ga4_agent.tools import ToolRegistry, run_sql_tool
+from ga4_agent.tools import ToolRegistry, create_chart_tool, run_sql_tool
 
 
 def build_agent(settings: Settings) -> Agent:
@@ -28,7 +28,7 @@ def build_agent(settings: Settings) -> Agent:
     )
     return Agent(
         model=model,
-        tools=ToolRegistry([run_sql_tool(runner, preview_rows=settings.preview_rows)]),
+        tools=ToolRegistry([run_sql_tool(runner, preview_rows=settings.preview_rows), create_chart_tool()]),
         system_prompt=build_system_prompt(ga4.CONTEXT),
         max_steps=settings.max_agent_steps,
     )

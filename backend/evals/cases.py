@@ -24,6 +24,7 @@ class Case:
     id: str
     question: str
     checks: tuple[Check, ...]
+    chart: tuple[str, int] | None = None  # expected (chart type, number of points)
 
 
 CASES = (
@@ -31,6 +32,12 @@ CASES = (
         "december_revenue",
         "What was total revenue in December 2020?",
         (mentions_amount(158166),),
+    ),
+    Case(
+        "daily_revenue_chart",
+        "Show me daily revenue in December 2020.",
+        (),
+        chart=("line", 31),
     ),
     Case(
         # With "today" at 2021-01-31, December (previous calendar month) and January are both fair readings.

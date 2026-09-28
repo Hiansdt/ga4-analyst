@@ -52,10 +52,13 @@ def cost(model: str, usage: Usage) -> float:
 def run_case(agent: Agent, model: str, case: Case) -> Outcome:
     started = time.monotonic()
     answer, failures, queries, failed_queries, usage = "", [], 0, 0, Usage()
+    charts: list[tuple[str, int]] = []
     for event in agent.run_turn([], case.question):
         match event:
             case TextDelta(text):
                 answer += text
+            case ToolFinished(name="create_chart", is_error=False, display=chart):
+                charts.append((chart["type"], len(chart["rows"])))
             case ToolFinished(name="run_sql", is_error=is_error):
                 queries += 1
                 failed_queries += is_error
@@ -64,6 +67,8 @@ def run_case(agent: Agent, model: str, case: Case) -> Outcome:
             case TurnCompleted(usage=turn_usage):
                 usage = turn_usage
     failures += [reason for check in case.checks if (reason := check(answer))]
+    if case.chart and case.chart not in charts:
+        failures.append(f"expected a {case.chart[0]} chart with {case.chart[1]} points, got {charts or 'none'}")
     return Outcome(
         model=model,
         case=case.id,
