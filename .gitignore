@@ -1,0 +1,29 @@
+# Secrets: keep GCP service-account keys under secrets/
+.env
+.env.*
+!.env.example
+secrets/
+
+# Local agent instructions
+CLAUDE.local.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Frontend build
+node_modules/
+dist/
+
+# Local data
+*.sqlite3
+*.db
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
