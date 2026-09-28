@@ -3,7 +3,7 @@
 from collections.abc import Generator, Iterator
 
 from ga4_agent.events import Event, TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
-from ga4_agent.llm import ModelClient, ModelError, ModelTurn
+from ga4_agent.llm import ModelClient, ModelError, ModelTurn, Usage
 from ga4_agent.tools import ToolRegistry, TurnContext
 
 
@@ -21,6 +21,7 @@ class Agent:
         """
         new_messages: list[dict] = [{"role": "user", "content": user_message}]
         ctx = TurnContext()
+        usage = Usage()
 
         for step in range(self._max_steps):
             # On the last step the model must answer with what it has instead of calling more tools.
@@ -30,6 +31,7 @@ class Agent:
             except ModelError as error:
                 yield TurnFailed(str(error))
                 break
+            usage += turn.usage
 
             if turn.stop_reason == "end_turn":
                 new_messages.append({"role": "assistant", "content": turn.content})
@@ -45,7 +47,7 @@ class Agent:
         else:
             yield TurnFailed(f"No answer after {self._max_steps} steps.")
 
-        yield TurnCompleted(new_messages)
+        yield TurnCompleted(new_messages, usage)
 
     def _stream_model(self, messages: list[dict], allow_tools: bool) -> Generator[Event, None, ModelTurn]:
         turn: ModelTurn | None = None

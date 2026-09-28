@@ -1,7 +1,9 @@
 """Events the agent yields while answering. Transports (SSE, CLI) only consume these."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+from ga4_agent.llm import Usage
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,7 @@ class TurnCompleted:
     """Always the last event. `messages` is what this turn adds to the conversation history."""
 
     messages: list[dict]
+    usage: Usage = field(default_factory=Usage)  # summed over every model call of the turn
 
 
 Event = TextDelta | ToolStarted | ToolFinished | TurnFailed | TurnCompleted

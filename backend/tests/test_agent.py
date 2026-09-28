@@ -2,7 +2,7 @@ from fakes import FakeRunner, ScriptedModel, daily_result, text, tool_use
 
 from ga4_agent.agent import Agent
 from ga4_agent.events import TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
-from ga4_agent.llm import ModelError, ModelTurn
+from ga4_agent.llm import ModelError, ModelTurn, Usage
 from ga4_agent.tools import ToolRegistry, run_sql_tool
 
 
@@ -102,3 +102,14 @@ def test_running_out_of_steps_without_an_answer_fails_the_turn():
 
     assert events[-2] == TurnFailed("No answer after 2 steps.")
     assert [m["role"] for m in events[-1].messages] == ["user", "assistant", "user", "assistant", "user"]
+
+
+def test_token_usage_is_summed_across_steps():
+    first = ModelTurn(
+        content=[tool_use("a", "run_sql", sql="SELECT 1")], stop_reason="tool_use", usage=Usage(100, 10, 0, 90)
+    )
+    second = ModelTurn(content=[text("Done.")], stop_reason="end_turn", usage=Usage(120, 20, 90, 0))
+
+    events = list(make_agent(ScriptedModel(first, second)).run_turn([], "Query"))
+
+    assert events[-1].usage == Usage(220, 30, 90, 90)

@@ -4,7 +4,7 @@ from collections.abc import Iterator
 
 import anthropic
 
-from ga4_agent.llm import ModelError, ModelTurn
+from ga4_agent.llm import ModelError, ModelTurn, Usage
 
 
 class AnthropicModel:
@@ -46,4 +46,10 @@ class AnthropicModel:
         yield ModelTurn(
             content=[block.model_dump(mode="json", exclude_none=True) for block in message.content],
             stop_reason=message.stop_reason,
+            usage=Usage(
+                input_tokens=message.usage.input_tokens,
+                output_tokens=message.usage.output_tokens,
+                cache_read_input_tokens=message.usage.cache_read_input_tokens or 0,
+                cache_creation_input_tokens=message.usage.cache_creation_input_tokens or 0,
+            ),
         )
