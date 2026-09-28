@@ -32,7 +32,7 @@ class ConversationStore(Protocol):
 
 class InMemoryStore:
     # TODO(persistent-conversations): Add a database-backed ConversationStore and select it in bootstrap.py
-    # WHY: conversations live in process memory, so Cloud Run is pinned to one always-on instance and restarts lose them
+    # WHY: conversations live in process memory, so Cloud Run is capped at one instance and chats vanish when it scales to zero
     # DONE-WHEN: a conversation created before restarting the server still loads via GET /api/conversations/{id}
     def __init__(self) -> None:
         self._conversations: dict[str, Conversation] = {}
