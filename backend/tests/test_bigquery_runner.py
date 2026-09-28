@@ -55,8 +55,11 @@ def test_returns_typed_columns_and_caps_rows(runner):
 
 @pytest.mark.bigquery
 def test_syntax_errors_come_back_as_query_errors(runner):
-    with pytest.raises(QueryError, match="Syntax error"):
+    with pytest.raises(QueryError, match="Syntax error") as error:
         runner.run(f"SELEC event_name FROM {EVENTS}")
+
+    # Only BigQuery's reason reaches the model, not the request URL or job id.
+    assert "https://" not in str(error.value)
 
 
 @pytest.mark.bigquery

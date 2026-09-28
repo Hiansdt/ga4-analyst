@@ -4,7 +4,7 @@ import datetime
 from decimal import Decimal
 from typing import Any
 
-from google.api_core.exceptions import BadRequest, Forbidden
+from google.api_core.exceptions import BadRequest, Forbidden, GoogleAPICallError
 from google.cloud import bigquery
 
 from ga4_agent.sql import Column, DryRun, QueryError, QueryResult, validate
@@ -40,7 +40,7 @@ class BigQueryRunner:
             columns = [Column(field.name, field.field_type) for field in rows.schema]
             records = [{c.name: to_json_value(row[c.name]) for c in columns} for row in rows]
         except (BadRequest, Forbidden) as error:
-            raise QueryError(error.message) from error
+            raise QueryError(_reason(error)) from error
 
         return QueryResult(
             columns=columns,
@@ -54,13 +54,18 @@ class BigQueryRunner:
         try:
             job = self._client.query(sql, job_config=job_config)
         except (BadRequest, Forbidden) as error:
-            raise QueryError(error.message) from error
+            raise QueryError(_reason(error)) from error
 
         return DryRun(
             statement_type=job.statement_type,
             referenced_tables=tuple(f"{t.project}.{t.dataset_id}.{t.table_id}" for t in job.referenced_tables),
             bytes_processed=job.total_bytes_processed or 0,
         )
+
+
+def _reason(error: GoogleAPICallError) -> str:
+    """BigQuery's own explanation, without the request URL and job id around it."""
+    return error.errors[0]["message"] if error.errors else error.message
 
 
 def to_json_value(value: Any) -> Any:
