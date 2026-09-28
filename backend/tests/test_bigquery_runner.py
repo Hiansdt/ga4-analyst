@@ -72,3 +72,15 @@ def test_tables_outside_the_dataset_are_rejected(runner):
 def test_writes_are_rejected(runner):
     with pytest.raises(QueryError):
         runner.run(f"DELETE FROM `{DATASET}.events_20201101` WHERE TRUE")
+
+
+@pytest.mark.bigquery
+def test_values_are_passed_as_query_parameters(runner):
+    result = runner.run(
+        f"SELECT device.category AS device, COUNT(*) AS events FROM {EVENTS} "
+        "WHERE _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', @start) AND FORMAT_DATE('%Y%m%d', @start) "
+        "AND device.category IN UNNEST(@devices) GROUP BY 1 ORDER BY 1 LIMIT @limit",
+        {"start": datetime.date(2020, 12, 1), "devices": ["mobile", "tablet"], "limit": 5},
+    )
+
+    assert [row["device"] for row in result.rows] == ["mobile", "tablet"]

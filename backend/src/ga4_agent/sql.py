@@ -3,7 +3,9 @@
 Nothing here talks to a database; adapters implement `SqlRunner`.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Protocol
 
 
@@ -32,8 +34,12 @@ class QueryResult:
     bytes_processed: int
 
 
+# Values bound to @name placeholders. Values are never pasted into SQL text.
+QueryParams = Mapping[str, str | int | date | list[str]]
+
+
 class SqlRunner(Protocol):
-    def run(self, sql: str) -> QueryResult:
+    def run(self, sql: str, params: QueryParams | None = None) -> QueryResult:
         """Validate and execute a query. Raises QueryError for anything the model should fix."""
         ...
 

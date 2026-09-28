@@ -3,7 +3,7 @@
 from collections.abc import Iterator
 
 from ga4_agent.llm import ModelError, ModelTurn
-from ga4_agent.sql import Column, QueryError, QueryResult
+from ga4_agent.sql import Column, QueryError, QueryParams, QueryResult
 
 
 class FakeRunner:
@@ -13,9 +13,11 @@ class FakeRunner:
         self.result = result
         self.fail_on = fail_on
         self.queries: list[str] = []
+        self.params: list[QueryParams | None] = []
 
-    def run(self, sql: str) -> QueryResult:
+    def run(self, sql: str, params: QueryParams | None = None) -> QueryResult:
         self.queries.append(sql)
+        self.params.append(params)
         if self.fail_on in sql:
             raise QueryError("Syntax error: Unexpected identifier BROKEN at [1:1]")
         return self.result

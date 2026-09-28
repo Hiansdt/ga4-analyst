@@ -7,7 +7,7 @@ from typing import Any
 from google.api_core.exceptions import BadRequest, Forbidden, GoogleAPICallError
 from google.cloud import bigquery
 
-from ga4_agent.sql import Column, DryRun, QueryError, QueryResult, validate
+from ga4_agent.sql import Column, DryRun, QueryError, QueryParams, QueryResult, validate
 
 
 class BigQueryRunner:
@@ -26,13 +26,15 @@ class BigQueryRunner:
         self._max_rows = max_rows
         self._timeout_s = timeout_s
 
-    def run(self, sql: str) -> QueryResult:
-        validate(self._dry_run(sql), allowed_dataset=self._allowed_dataset, max_bytes=self._max_bytes)
+    def run(self, sql: str, params: QueryParams | None = None) -> QueryResult:
+        parameters = [_parameter(name, value) for name, value in (params or {}).items()]
+        validate(self._dry_run(sql, parameters), allowed_dataset=self._allowed_dataset, max_bytes=self._max_bytes)
 
         # The guard already checked the estimate; maximum_bytes_billed enforces it on the real job.
         job_config = bigquery.QueryJobConfig(
             maximum_bytes_billed=self._max_bytes,
             job_timeout_ms=int(self._timeout_s * 1000),
+            query_parameters=parameters,
         )
         try:
             job = self._client.query(sql, job_config=job_config)
@@ -49,8 +51,8 @@ class BigQueryRunner:
             bytes_processed=job.total_bytes_processed or 0,
         )
 
-    def _dry_run(self, sql: str) -> DryRun:
-        job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
+    def _dry_run(self, sql: str, parameters: list) -> DryRun:
+        job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False, query_parameters=parameters)
         try:
             job = self._client.query(sql, job_config=job_config)
         except (BadRequest, Forbidden) as error:
@@ -61,6 +63,21 @@ class BigQueryRunner:
             referenced_tables=tuple(f"{t.project}.{t.dataset_id}.{t.table_id}" for t in job.referenced_tables),
             bytes_processed=job.total_bytes_processed or 0,
         )
+
+
+def _parameter(name: str, value: str | int | datetime.date | list[str]):
+    match value:
+        case list():
+            return bigquery.ArrayQueryParameter(name, "STRING", value)
+        case bool():
+            raise TypeError(f"Unsupported query parameter {name}={value!r}")
+        case int():
+            return bigquery.ScalarQueryParameter(name, "INT64", value)
+        case datetime.date():
+            return bigquery.ScalarQueryParameter(name, "DATE", value)
+        case str():
+            return bigquery.ScalarQueryParameter(name, "STRING", value)
+    raise TypeError(f"Unsupported query parameter {name}={value!r}")
 
 
 def _reason(error: GoogleAPICallError) -> str:
