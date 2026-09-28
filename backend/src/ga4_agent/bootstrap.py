@@ -1,14 +1,17 @@
 """Composition root: the only place that picks concrete adapters and wires them together."""
 
 import anthropic
+from fastapi import FastAPI
 from google.cloud import bigquery
 
 from ga4_agent.adapters.anthropic import AnthropicModel
 from ga4_agent.adapters.bigquery import BigQueryRunner
 from ga4_agent.agent import Agent
+from ga4_agent.api import create_app
 from ga4_agent.config import Settings
 from ga4_agent.datasets import ga4
 from ga4_agent.prompt import build_system_prompt
+from ga4_agent.store import InMemoryStore
 from ga4_agent.tools import ToolRegistry, create_chart_tool, run_sql_tool
 
 
@@ -32,3 +35,9 @@ def build_agent(settings: Settings) -> Agent:
         system_prompt=build_system_prompt(ga4.CONTEXT),
         max_steps=settings.max_agent_steps,
     )
+
+
+def build_app() -> FastAPI:
+    """Uvicorn factory: uvicorn ga4_agent.bootstrap:build_app --factory"""
+    settings = Settings()
+    return create_app(build_agent(settings), InMemoryStore(), web_dir=settings.web_dir)

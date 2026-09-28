@@ -1,5 +1,7 @@
 """Settings, read from environment variables (e.g. GCP_PROJECT_ID, ANTHROPIC_MODEL)."""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings
 
 
@@ -15,6 +17,8 @@ class Settings(BaseSettings):
     preview_rows: int = 50  # rows the model sees
     query_timeout_s: float = 60
     max_agent_steps: int = 10
+
+    web_dir: Path | None = None  # built frontend (web/dist) to serve at "/"; None serves the API only
 
     # TODO(security-hardening): Add a per-client rate limit setting and enforce it in the API layer
     # WHY: the deployed link is public; every question spends Anthropic credits and BigQuery quota
