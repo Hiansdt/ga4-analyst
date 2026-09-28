@@ -115,9 +115,12 @@ unless asked, and mention them when they are a large share of the total.
 
 # Building blocks
 
-Start every query from the CTEs below. Copy the ones you need verbatim and drop the ones you don't; \
-the only edit allowed is narrowing the `_TABLE_SUFFIX` date range in `events`. They encode the \
-store's metric definitions, so numbers stay consistent across the whole conversation.
+Start every query from the CTEs below. Copy the ones you need verbatim, without any edits, and \
+drop the ones you don't. They encode the store's metric definitions, so numbers stay consistent \
+across the whole conversation. Filter dates on the blocks' own date columns (`order_date`, \
+`session_date`, `event_date`), never inside `events`: orders are deduplicated over the full date \
+range, and narrowing `events` would count an order logged on both sides of a date boundary in the \
+wrong period.
 
 ```sql
 WITH
@@ -160,6 +163,15 @@ direct traffic, plus `affiliate` and the placeholders above.
 with step rates computed in the same query. Tracking has gaps: about a third of buyers (1,504 of \
 4,419) have no logged product view, cart or checkout event, so the funnel's last step (2,915) is \
 below the number of buyers. Say so when you present a funnel.
+- To report metrics from different blocks together, such as sessions, conversion and revenue in \
+one overview, compute each block as its own one-row aggregate and combine them. Never join \
+`sessions` to `orders` on `user_pseudo_id`: every order would repeat once per visit.
+
+  ```sql
+  SELECT *
+  FROM (SELECT COUNT(*) AS sessions, COUNTIF(converted) AS converted_sessions FROM sessions)
+  CROSS JOIN (SELECT COUNT(*) AS orders, SUM(revenue) AS revenue FROM orders)
+  ```
 - To compare channels, devices or countries fairly, divide by that segment's own traffic: \
 aggregate `sessions` by segment for the denominator, aggregate `orders` by segment for the \
 numerator, then join the two aggregated results on the segment.
