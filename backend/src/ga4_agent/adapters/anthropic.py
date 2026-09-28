@@ -38,6 +38,9 @@ class AnthropicModel:
                         yield event.text
                 message = stream.get_final_message()
         except anthropic.APIError as error:
+            # TODO(security-hardening): Log the API error server-side and give users a generic message
+            # WHY: error.message reaches the public UI via TurnFailed and can expose account limits or request details
+            # DONE-WHEN: a test forcing anthropic.APIStatusError gets ModelError("The AI service is unavailable. Please try again.") and the raw message only appears in the logs
             raise ModelError(f"The AI service request failed: {error.message}") from error
 
         yield ModelTurn(
