@@ -27,7 +27,7 @@ Example: *"Which device converts best?"*
             └────────────────────────────────────────────┘
 ```
 
-- **Ports and adapters.** The agent core depends only on small interfaces. Anthropic, BigQuery and conversation storage are adapters, created in one place (the composition root: `api.py` for the server, `cli.py` for the terminal) and passed in. The loop is tested with fakes, and storage can be swapped without touching the agent.
+- **Ports and adapters.** The agent core depends only on small interfaces. Anthropic, BigQuery and conversation storage are adapters, created in one place (the composition root, `bootstrap.py`, shared by the server and the terminal CLI) and passed in. The loop is tested with fakes, and storage can be swapped without touching the agent.
 - **Events as the contract.** The agent yields typed events. The SSE endpoint, the CLI and the tests are all consumers of the same stream, and the frontend mirrors the event types in TypeScript.
 - **Chat-shaped API.** Conversations are owned by the server behind a `ConversationStore` interface, so persisted chat history is a new store class, not a new contract.
 

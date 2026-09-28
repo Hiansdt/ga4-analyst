@@ -14,6 +14,9 @@ dependencies = [
     "uvicorn>=0.54.0",
 ]
 
+[project.scripts]
+ga4-agent = "ga4_agent.cli:main"
+
 [build-system]
 requires = ["uv_build>=0.11.32,<0.12.0"]
 build-backend = "uv_build"
@@ -26,8 +29,12 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-m 'not bigquery'"
-markers = ["bigquery: hits real BigQuery (run with: pytest -m bigquery)"]
+pythonpath = ["tests"]
+addopts = "-m 'not bigquery and not llm'"
+markers = [
+    "bigquery: hits real BigQuery (run with: pytest -m bigquery)",
+    "llm: calls the real Anthropic API, costs a few cents (run with: pytest -m llm)",
+]
 
 [tool.ruff]
 line-length = 120
