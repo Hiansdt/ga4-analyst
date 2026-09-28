@@ -3,32 +3,27 @@ import type { AgentEvent, StoredTurn } from './types'
 
 export class ConversationGone extends Error {}
 
+// Error messages are shown to business users as is, so they carry no status codes.
+const UNAVAILABLE = 'The analyst is unavailable right now. Please try again in a minute.'
+
 export async function createConversation(): Promise<string> {
-  const response = await fetch('/api/conversations', { method: 'POST' })
-  if (!response.ok) throw new Error(`Could not start a conversation (${response.status})`)
+  const response = await request('/api/conversations', { method: 'POST' })
   return (await response.json()).id
 }
 
 export async function loadConversation(id: string): Promise<StoredTurn[]> {
-  const response = await fetch(`/api/conversations/${id}`)
-  if (response.status === 404) throw new ConversationGone()
-  if (!response.ok) throw new Error(`Could not load the conversation (${response.status})`)
+  const response = await request(`/api/conversations/${id}`)
   return (await response.json()).turns
 }
 
-// TODO(ui-harden): Replace HTTP status codes in user-facing errors with plain sentences
-// WHY: messages like "The question could not be sent (500)" mean nothing to a business user
-// DONE-WHEN: a vitest test with fetch returning 500 gets the error "The analyst is unavailable right now. Please try again in a minute."
-
 /** Post a question and call onEvent for every event of the streamed answer. */
 export async function askQuestion(id: string, question: string, onEvent: (event: AgentEvent) => void): Promise<void> {
-  const response = await fetch(`/api/conversations/${id}/messages`, {
+  const response = await request(`/api/conversations/${id}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ content: question }),
   })
-  if (response.status === 404) throw new ConversationGone()
-  if (!response.ok || !response.body) throw new Error(`The question could not be sent (${response.status})`)
+  if (!response.body) throw new Error(UNAVAILABLE)
 
   const parser = new SseParser()
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
@@ -37,4 +32,13 @@ export async function askQuestion(id: string, question: string, onEvent: (event:
     if (done) return
     parser.push(value).forEach(onEvent)
   }
+}
+
+async function request(url: string, init?: RequestInit): Promise<Response> {
+  const response = await fetch(url, init).catch(() => {
+    throw new Error(UNAVAILABLE)
+  })
+  if (response.status === 404) throw new ConversationGone()
+  if (!response.ok) throw new Error(UNAVAILABLE)
+  return response
 }

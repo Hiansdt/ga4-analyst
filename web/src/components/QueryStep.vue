@@ -6,10 +6,6 @@ const props = defineProps<{ step: Extract<Block, { kind: 'query' }> }>()
 
 const PREVIEW_ROWS = 8
 
-// TODO(ui-harden): Pluralize row counts and handle a missing total
-// WHY: the summary reads "1 rows", or "undefined rows" when total_rows is absent
-// DONE-WHEN: summaries read "1 row", "2,304 rows", and "Queried the data" when totalRows is undefined
-
 // TODO(ui-clarify): Say "corrected it" only when a later query in the turn succeeded
 // WHY: the failed-step label claims a correction that may never have happened
 // DONE-WHEN: a turn whose only query failed shows "Query failed" without "corrected it"
@@ -24,9 +20,13 @@ const summary = computed(() => {
     case 'failed':
       return 'Query failed, the assistant corrected it'
     case 'done':
-      return `Queried the data, ${props.step.totalRows?.toLocaleString('en-US')} rows`
+      return props.step.totalRows === undefined ? 'Queried the data' : `Queried the data, ${rowCount(props.step.totalRows)}`
   }
 })
+
+function rowCount(count: number): string {
+  return `${count.toLocaleString('en-US')} ${count === 1 ? 'row' : 'rows'}`
+}
 const rows = computed(() => props.step.rows?.slice(0, PREVIEW_ROWS) ?? [])
 </script>
 

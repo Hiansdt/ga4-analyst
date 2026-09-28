@@ -66,6 +66,12 @@ function finishBlock(block: Block, event: Extract<AgentEvent, { type: 'tool_fini
   return event.is_error ? [] : [{ kind: 'chart', id: block.id, chart: event.display as ChartSpec }]
 }
 
+// Text written before a query is the model narrating its steps. Text followed only by charts is the answer,
+// since the model often writes it before drawing the chart.
+export function isNarration(blocks: Block[], index: number): boolean {
+  return blocks.slice(index + 1).some((block) => block.kind === 'query')
+}
+
 export function replayTurn(stored: StoredTurn): Turn {
   const turn = stored.events.reduce(applyEvent, newTurn(stored.question))
   return turn.status === 'streaming' ? { ...turn, status: 'done' } : turn

@@ -1,23 +1,14 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
-import type { Turn } from '../chat/turn'
+import { isNarration, type Turn } from '../chat/turn'
 import MarkdownText from './MarkdownText.vue'
 import QueryStep from './QueryStep.vue'
 
-const props = defineProps<{ turn: Turn }>()
-
-// TODO(ui-harden): Treat text followed only by charts as answer text, not narration
-// WHY: when the model writes its answer before calling create_chart, the answer is styled as muted narration
-// DONE-WHEN: a component test rendering a turn with blocks [text, chart] finds no .narration element
+defineProps<{ turn: Turn }>()
 
 // TODO(ui-harden): Add a "Try again" button on a failed turn that re-sends its question
 // WHY: after a failure the user has to retype the question from memory
 // DONE-WHEN: a turn_failed event renders a "Try again" button whose click calls ask() with the same question text
-// Text written right before a tool call is the model narrating its steps, not part of the answer.
-function isNarration(index: number): boolean {
-  const next = props.turn.blocks[index + 1]
-  return next !== undefined && next.kind !== 'text'
-}
 
 // ECharts is most of the bundle; load it with the first chart instead of on page load.
 const ChartBlock = defineAsyncComponent(() => import('./ChartBlock.vue'))
@@ -31,7 +22,7 @@ const ChartBlock = defineAsyncComponent(() => import('./ChartBlock.vue'))
         <MarkdownText
           v-if="block.kind === 'text'"
           :text="block.text"
-          :class="{ narration: isNarration(index) }"
+          :class="{ narration: isNarration(turn.blocks, index) }"
         />
         <QueryStep v-else-if="block.kind === 'query'" :step="block" />
         <ChartBlock v-else-if="block.kind === 'chart'" :chart="block.chart" />

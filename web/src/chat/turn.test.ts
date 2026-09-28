@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentEvent } from '../api/types'
-import { applyEvent, newTurn, replayTurn } from './turn'
+import { applyEvent, type Block, isNarration, newTurn, replayTurn } from './turn'
 
 const apply = (events: AgentEvent[]) => events.reduce(applyEvent, newTurn('Q'))
 
@@ -82,5 +82,26 @@ describe('replayTurn', () => {
     const turn = replayTurn({ question: 'Hi', events: [{ type: 'text_delta', text: 'Hello.' }] })
 
     expect(turn).toMatchObject({ question: 'Hi', status: 'done', blocks: [{ kind: 'text', text: 'Hello.' }] })
+  })
+})
+
+describe('isNarration', () => {
+  const text: Block = { kind: 'text', text: 'x' }
+  const query: Block = { kind: 'query', id: 'q', sql: 'SELECT 1', status: 'done' }
+  const chart: Block = { kind: 'chart', id: 'c', chart: { type: 'line', title: 't', x: 'd', y: ['r'], rows: [] } }
+  const pending: Block = { kind: 'pending', id: 'p', name: 'create_chart' }
+
+  it('marks text written before a query as narration', () => {
+    expect(isNarration([text, query, text], 0)).toBe(true)
+  })
+
+  it('treats text followed only by charts as the answer', () => {
+    expect(isNarration([text, chart], 0)).toBe(false)
+    expect(isNarration([text, pending], 0)).toBe(false)
+    expect(isNarration([text, query, text, chart], 2)).toBe(false)
+  })
+
+  it('treats the last text as the answer', () => {
+    expect(isNarration([text, query, text], 2)).toBe(false)
   })
 })
