@@ -27,3 +27,9 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Local test transcripts
+convos/
+
+# Eval run outputs
+backend/evals/results/

@@ -47,4 +47,10 @@ Example: *"Which device converts best?"*
 
 - **Unit tests:** the SQL guard, the tool registry and the frontend event reducer.
 - **Loop tests:** driven by a scripted fake LLM. They cover self-correction after a failed query, the step limit and error handling, deterministically and at no API cost.
-- **Eval script:** runs fixed questions against the real stack and checks answers against independently verified numbers (for example 4,907 deduplicated orders and $339,457 revenue).
+- **Eval** (`backend/evals/`): 10 business questions run against the real agent, Claude and BigQuery. Each answer is checked against values computed independently of the agent: exact figures, percentages at most 100%, no dollar amount above full-period revenue. Most expected answers are deliberately absent from the system prompt. It prints pass/fail, query retries, latency and cost per question:
+
+  ```
+  cd backend
+  uv run --env-file ../.env python -m evals.run --model claude-haiku-4-5 --model claude-sonnet-5
+  ```
+- **Integration tests** (opt-in): `pytest -m bigquery` checks the SQL building blocks against verified totals and the BigQuery adapter; `pytest -m llm` round-trips a tool conversation through the real API.

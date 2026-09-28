@@ -29,7 +29,7 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["tests"]
+pythonpath = ["tests", "."]
 addopts = "-m 'not bigquery and not llm'"
 markers = [
     "bigquery: hits real BigQuery (run with: pytest -m bigquery)",
