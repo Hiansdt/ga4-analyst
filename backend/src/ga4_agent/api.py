@@ -6,13 +6,14 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, StringConstraints
 
 from ga4_agent.agent import Agent
 from ga4_agent.events import Event, TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
+from ga4_agent.ratelimit import RateLimiter
 from ga4_agent.store import Conversation, ConversationNotFound, ConversationStore
 
 EVENT_TYPES = {
@@ -28,7 +29,15 @@ class MessageIn(BaseModel):
     content: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
-def create_app(agent: Agent, store: ConversationStore, web_dir: Path | None = None) -> FastAPI:
+def create_app(
+    agent: Agent,
+    store: ConversationStore,
+    *,
+    limiter: RateLimiter,
+    max_question_chars: int,
+    max_turns: int,
+    web_dir: Path | None = None,
+) -> FastAPI:
     app = FastAPI(title="GA4 Analyst")
 
     @app.post("/api/conversations", status_code=201)
@@ -41,8 +50,19 @@ def create_app(agent: Agent, store: ConversationStore, web_dir: Path | None = No
         return {"id": conversation.id, "turns": conversation.turns}
 
     @app.post("/api/conversations/{conversation_id}/messages")
-    def post_message(conversation_id: str, message: MessageIn) -> StreamingResponse:
+    def post_message(conversation_id: str, message: MessageIn, request: Request) -> StreamingResponse:
+        # Every check runs before streaming starts: once the stream is open the status code is fixed.
+        if not limiter.allow(client_address(request)):
+            raise HTTPException(
+                429, "You are asking questions faster than the analyst can answer. Wait a minute and try again."
+            )
         conversation = _get(store, conversation_id)
+        if len(message.content) > max_question_chars:
+            raise HTTPException(422, f"Questions can be at most {max_question_chars:,} characters.")
+        if len(conversation.turns) >= max_turns:
+            raise HTTPException(
+                409, "This chat has reached its length limit. Start a new chat to keep asking questions."
+            )
         return StreamingResponse(
             _answer(agent, store, conversation, message.content),
             media_type="text/event-stream",
@@ -53,6 +73,15 @@ def create_app(agent: Agent, store: ConversationStore, web_dir: Path | None = No
         # Mounted last so /api routes take precedence; html=True serves index.html for "/".
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
     return app
+
+
+def client_address(request: Request) -> str:
+    """The caller's address. Cloud Run appends it as the last X-Forwarded-For entry; earlier entries come from the
+    client and can be forged. Without the header (local runs) the direct peer is the caller."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.rsplit(",", 1)[-1].strip()
+    return request.client.host if request.client else "unknown"
 
 
 def _get(store: ConversationStore, conversation_id: str) -> Conversation:

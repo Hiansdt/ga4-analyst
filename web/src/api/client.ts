@@ -39,6 +39,17 @@ async function request(url: string, init?: RequestInit): Promise<Response> {
     throw new Error(UNAVAILABLE)
   })
   if (response.status === 404) throw new ConversationGone()
+  // Limits (too many questions, a full chat) come with an explanation written for the user.
+  if (response.status === 409 || response.status === 429) throw new Error(await explanation(response))
   if (!response.ok) throw new Error(UNAVAILABLE)
   return response
+}
+
+async function explanation(response: Response): Promise<string> {
+  try {
+    const { detail } = await response.json()
+    return typeof detail === 'string' ? detail : UNAVAILABLE
+  } catch {
+    return UNAVAILABLE
+  }
 }

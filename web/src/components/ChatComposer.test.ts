@@ -25,4 +25,9 @@ describe('ChatComposer', () => {
     expect(composer.emitted('ask')).toBeUndefined()
     expect(textarea.element.value).toBe('next')
   })
+  it('limits questions to the length the server accepts', () => {
+    const composer = mount(ChatComposer, { props: { busy: false } })
+
+    expect(composer.get('textarea').attributes('maxlength')).toBe('4000')
+  })
 })

@@ -11,6 +11,7 @@ from ga4_agent.api import create_app
 from ga4_agent.config import Settings
 from ga4_agent.datasets import ga4
 from ga4_agent.prompt import build_system_prompt
+from ga4_agent.ratelimit import RateLimiter
 from ga4_agent.store import InMemoryStore
 from ga4_agent.tools import ToolRegistry, create_chart_tool, run_sql_tool
 
@@ -40,4 +41,11 @@ def build_agent(settings: Settings) -> Agent:
 def build_app() -> FastAPI:
     """Uvicorn factory: uvicorn ga4_agent.bootstrap:build_app --factory"""
     settings = Settings()
-    return create_app(build_agent(settings), InMemoryStore(), web_dir=settings.web_dir)
+    return create_app(
+        build_agent(settings),
+        InMemoryStore(),
+        limiter=RateLimiter(limit=settings.questions_per_minute, window_s=60),
+        max_question_chars=settings.max_question_chars,
+        max_turns=settings.max_turns_per_conversation,
+        web_dir=settings.web_dir,
+    )

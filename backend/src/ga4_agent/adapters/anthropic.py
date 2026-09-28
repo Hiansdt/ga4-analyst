@@ -1,10 +1,13 @@
 """Anthropic adapter for the LLM port: one streamed Messages API call per model turn."""
 
+import logging
 from collections.abc import Iterator
 
 import anthropic
 
 from ga4_agent.llm import ModelError, ModelTurn, Usage
+
+logger = logging.getLogger(__name__)
 
 
 class AnthropicModel:
@@ -38,10 +41,9 @@ class AnthropicModel:
                         yield event.text
                 message = stream.get_final_message()
         except anthropic.APIError as error:
-            # TODO(security-hardening): Log the API error server-side and give users a generic message
-            # WHY: error.message reaches the public UI via TurnFailed and can expose account limits or request details
-            # DONE-WHEN: a test forcing anthropic.APIStatusError gets ModelError("The AI service is unavailable. Please try again.") and the raw message only appears in the logs
-            raise ModelError(f"The AI service request failed: {error.message}") from error
+            # The message can reveal account limits or request details, so it goes to the logs, not to users.
+            logger.error("Anthropic API request failed: %s", error.message)
+            raise ModelError("The AI service is unavailable. Please try again.") from error
 
         yield ModelTurn(
             content=[block.model_dump(mode="json", exclude_none=True) for block in message.content],

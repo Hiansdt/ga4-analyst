@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from ga4_agent.agent import Agent
 from ga4_agent.api import create_app
 from ga4_agent.llm import ModelTurn
+from ga4_agent.ratelimit import RateLimiter
 from ga4_agent.store import InMemoryStore
 from ga4_agent.tools import ToolRegistry, run_sql_tool
 
@@ -14,7 +15,9 @@ def answer(value: str) -> ModelTurn:
     return ModelTurn(content=[text(value)], stop_reason="end_turn")
 
 
-def make_client(*turns: ModelTurn) -> tuple[TestClient, ScriptedModel]:
+def make_client(
+    *turns: ModelTurn, questions_per_minute: int = 100, max_question_chars: int = 4000, max_turns: int = 30
+) -> tuple[TestClient, ScriptedModel]:
     model = ScriptedModel(*turns)
     agent = Agent(
         model=model,
@@ -22,7 +25,14 @@ def make_client(*turns: ModelTurn) -> tuple[TestClient, ScriptedModel]:
         system_prompt="test",
         max_steps=5,
     )
-    return TestClient(create_app(agent, InMemoryStore())), model
+    app = create_app(
+        agent,
+        InMemoryStore(),
+        limiter=RateLimiter(limit=questions_per_minute, window_s=60),
+        max_question_chars=max_question_chars,
+        max_turns=max_turns,
+    )
+    return TestClient(app), model
 
 
 def sse_events(body: str) -> list[tuple[str, dict]]:
@@ -93,3 +103,45 @@ def test_empty_questions_are_rejected():
     response = client.post(f"/api/conversations/{conversation_id}/messages", json={"content": "  "})
 
     assert response.status_code == 422
+
+
+def post_question(client: TestClient, conversation_id: str, question: str = "Hi", forwarded_for: str | None = None):
+    headers = {"X-Forwarded-For": forwarded_for} if forwarded_for else {}
+    return client.post(f"/api/conversations/{conversation_id}/messages", json={"content": question}, headers=headers)
+
+
+def test_a_client_asking_too_often_gets_429_before_anything_runs():
+    client, _ = make_client(questions_per_minute=20)
+
+    statuses = [post_question(client, "missing").status_code for _ in range(21)]
+
+    assert statuses == [404] * 20 + [429]
+
+
+def test_clients_are_told_apart_by_the_address_the_proxy_appends():
+    client, _ = make_client(questions_per_minute=1)
+
+    # A client can put anything in X-Forwarded-For; Cloud Run appends the real address last.
+    assert post_question(client, "missing", forwarded_for="1.1.1.1, 203.0.113.7").status_code == 404
+    assert post_question(client, "missing", forwarded_for="2.2.2.2, 203.0.113.7").status_code == 429
+    assert post_question(client, "missing", forwarded_for="203.0.113.8").status_code == 404
+
+
+def test_questions_over_the_length_limit_never_reach_the_model():
+    client, _ = make_client(max_question_chars=10)  # no scripted turns: calling the model would fail
+    conversation_id = client.post("/api/conversations").json()["id"]
+
+    response = post_question(client, conversation_id, "x" * 11)
+
+    assert response.status_code == 422
+
+
+def test_a_full_conversation_asks_for_a_new_one():
+    client, _ = make_client(answer("Hello."), max_turns=1)
+    conversation_id = client.post("/api/conversations").json()["id"]
+    ask(client, conversation_id, "Hi")
+
+    response = post_question(client, conversation_id, "Again?")
+
+    assert response.status_code == 409
+    assert "new chat" in response.json()["detail"]

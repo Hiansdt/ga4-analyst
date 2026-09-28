@@ -26,6 +26,13 @@ describe('client errors', () => {
     await expect(askQuestion('abc', 'Q', () => {})).rejects.toThrow(UNAVAILABLE)
   })
 
+  it.each([409, 429])('passes on the server explanation for a %i', async (status) => {
+    const detail = 'Start a new chat to keep asking questions.'
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ detail }, { status })))
+
+    await expect(askQuestion('abc', 'Q', () => {})).rejects.toThrow(detail)
+  })
+
   it('reports an expired conversation separately', async () => {
     respondWith(404)
 

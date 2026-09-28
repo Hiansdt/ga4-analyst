@@ -18,16 +18,10 @@ class Settings(BaseSettings):
     query_timeout_s: float = 60
     max_agent_steps: int = 10
 
+    # The link is public and every question spends credits. The whole history is resent on every step,
+    # so long questions and long chats cost more each turn.
+    questions_per_minute: int = 20  # per client
+    max_question_chars: int = 4000  # the frontend textarea uses the same limit
+    max_turns_per_conversation: int = 30
+
     web_dir: Path | None = None  # built frontend (web/dist) to serve at "/"; None serves the API only
-
-    # TODO(security-hardening): Add a per-client rate limit setting and enforce it in the API layer
-    # WHY: the deployed link is public; every question spends Anthropic credits and BigQuery quota
-    # DONE-WHEN: an API test posting 21 questions within a minute from one client gets HTTP 429 on the 21st
-
-    # TODO(security-hardening): Add a max question length setting and reject longer questions in the API layer
-    # WHY: unbounded input inflates token cost on every later turn of the conversation
-    # DONE-WHEN: an API test posting a 4,001-character question gets HTTP 422 and the model is never called
-
-    # TODO(security-hardening): Cap turns per conversation and start a new one past the limit
-    # WHY: the full history is resent on every step, so long conversations get expensive and slow
-    # DONE-WHEN: an API test posting message 31 to a 30-turn conversation gets HTTP 409 with a "start a new conversation" message

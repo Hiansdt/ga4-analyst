@@ -31,6 +31,7 @@ function onKeydown(event: KeyboardEvent): void {
       id="question"
       v-model="draft"
       rows="1"
+      maxlength="4000"
       placeholder="Ask about revenue, products, channels, conversion..."
       @keydown="onKeydown"
     />
