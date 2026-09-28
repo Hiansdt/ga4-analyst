@@ -15,7 +15,40 @@ Example: *"Which device converts best?"*
 3. Claude calls `run_sql`. The query is validated with a BigQuery dry run, then executed with a byte cap. The full rows are stored server-side, and Claude receives a preview.
 4. If the query fails, the error goes back to Claude, which fixes the query and tries again.
 5. Claude calls `create_chart` with a stored result id, a chart type and column names. The server attaches the stored rows, so every number on a chart comes straight from BigQuery.
-6. Claude streams its written answer. Every step reaches the browser as a typed event: `tool_started`, `sql_result`, `chart`, `text_delta`, `done`.
+6. Claude streams its written answer. Every step reaches the browser as a typed event: `text_delta`, `tool_started`, `tool_finished` (with the SQL, rows or chart), `turn_failed`, `turn_completed`.
+
+## Running it
+
+Needs Python 3.12 with [uv](https://docs.astral.sh/uv/), Node 24, and a Google Cloud project. BigQuery access uses Application Default Credentials, so there are no key files:
+
+```
+gcloud auth application-default login --impersonate-service-account ga4-agent-runtime@<project>.iam.gserviceaccount.com
+cp .env.example .env   # then fill in ANTHROPIC_API_KEY and GCP_PROJECT_ID
+```
+
+Development, with the API and the Vite dev server in two terminals:
+
+```
+cd backend && uv run --env-file ../.env uvicorn ga4_agent.bootstrap:build_app --factory --port 8000
+cd web && npm install && npm run dev      # API_URL=http://localhost:<port> if the API is not on 8000
+```
+
+A terminal client is also available: `cd backend && uv run --env-file ../.env ga4-agent`.
+
+## Deploying
+
+The `Dockerfile` builds the frontend and serves it from the same FastAPI process, so the app is one Cloud Run service. `deploy/cloudrun.sh` builds the image with Cloud Build and deploys it:
+
+- The service runs as `ga4-agent-runtime`, whose only role is BigQuery Job User. The container has no credentials of its own.
+- The image is built by `ga4-agent-builder`, which only has the Cloud Run builder role.
+- The Anthropic key is read from Secret Manager (`anthropic-api-key`), never baked into the image. `.dockerignore` and `.gcloudignore` keep `.env` out of both the image and the upload.
+- It scales to zero when idle and to at most one instance, which caps cost. Conversations are kept in memory, so an idle chat is gone once the instance stops.
+
+```
+gcloud services enable secretmanager.googleapis.com
+(set -a; . ./.env; printf %s "$ANTHROPIC_API_KEY" | gcloud secrets create anthropic-api-key --data-file=-)
+deploy/cloudrun.sh
+```
 
 ## Architecture
 

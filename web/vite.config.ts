@@ -5,6 +5,6 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     // In development the API runs separately: uvicorn ga4_agent.bootstrap:build_app --factory
-    proxy: { '/api': 'http://localhost:8000' },
+    proxy: { '/api': process.env.API_URL ?? 'http://localhost:8000' },
   },
 })

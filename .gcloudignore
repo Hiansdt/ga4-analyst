@@ -1,0 +1,16 @@
+# Files never uploaded by `gcloud run deploy --source`. Secrets stay local; the API key comes from Secret Manager.
+.env
+.env.*
+secrets/
+CLAUDE.local.md
+
+.git
+.impeccable
+convos
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+backend/evals/results

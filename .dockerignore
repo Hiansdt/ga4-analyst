@@ -1,0 +1,16 @@
+# Secrets never enter the image; the API key comes from Secret Manager at runtime.
+.env
+.env.*
+secrets/
+CLAUDE.local.md
+
+.git
+.impeccable
+convos
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+backend/evals/results
