@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from ga4_agent.datasets.ga4 import BUILDING_BLOCKS, DATASET_END, DATASET_START
-from ga4_agent.datasets.ga4_metrics import MetricsQuery, compile_query
+from ga4_agent.datasets.ga4_metrics import MetricsQuery, compile_query, describe
 
 
 def compiled(**fields) -> tuple[str, dict]:
@@ -82,6 +82,27 @@ def test_dates_are_filtered_on_each_block_own_date_column():
 def test_requests_the_blocks_cannot_answer_are_rejected_with_a_way_forward(fields, message):
     with pytest.raises(ValidationError, match=message):
         MetricsQuery.model_validate(fields)
+
+
+@pytest.mark.parametrize(
+    ("fields", "label"),
+    [
+        ({"metrics": ["revenue"]}, "Revenue"),
+        ({"metrics": ["revenue", "sessions"], "by": "device"}, "Revenue and sessions by device"),
+        (
+            {"metrics": ["orders", "buyers", "average_order_value"], "by": "month"},
+            "Orders, buyers and average order value by month",
+        ),
+        (
+            {"metrics": ["conversion_rate_pct"], "start": "2020-12-01", "end": "2020-12-31"},
+            "Conversion rate, Dec 1 to Dec 31, 2020",
+        ),
+        ({"metrics": ["revenue"], "start": "2020-12-15", "end": "2021-01-15"}, "Revenue, Dec 15, 2020 to Jan 15, 2021"),
+        ({"metrics": ["sessions"], "filters": {"device": ["mobile", "tablet"]}}, "Sessions for mobile and tablet"),
+    ],
+)
+def test_describes_a_query_in_plain_language(fields, label):
+    assert describe(MetricsQuery.model_validate(fields)) == label
 
 
 @pytest.fixture(scope="module")

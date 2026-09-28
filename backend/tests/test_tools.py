@@ -59,7 +59,7 @@ def test_run_sql_stores_the_result_and_shows_the_model_a_preview():
     ctx = TurnContext()
     registry = ToolRegistry([run_sql_tool(FakeRunner(daily_result(30)), preview_rows=5)])
 
-    output = registry.run("run_sql", {"sql": "SELECT 1"}, ctx)
+    output = registry.run("run_sql", {"sql": "SELECT 1", "purpose": "Check"}, ctx)
 
     sent = json.loads(output.content)
     assert not output.is_error
@@ -73,16 +73,16 @@ def test_run_sql_stores_the_result_and_shows_the_model_a_preview():
 def test_run_sql_failures_go_back_to_the_model():
     registry = ToolRegistry([run_sql_tool(FakeRunner(daily_result(3)), preview_rows=5)])
 
-    output = registry.run("run_sql", {"sql": "SELECT BROKEN"}, TurnContext())
+    output = registry.run("run_sql", {"sql": "SELECT BROKEN", "purpose": "Check"}, TurnContext())
 
     assert output.is_error
     assert "Syntax error" in output.content
-    assert output.display == {"sql": "SELECT BROKEN", "error": output.content}
+    assert output.display == {"label": "Check", "sql": "SELECT BROKEN", "error": output.content}
 
 
 def chart_registry_with_result(ctx: TurnContext) -> tuple[ToolRegistry, str]:
     registry = ToolRegistry([run_sql_tool(FakeRunner(daily_result(3)), preview_rows=2), create_chart_tool()])
-    result_id = json.loads(registry.run("run_sql", {"sql": "SELECT 1"}, ctx).content)["result_id"]
+    result_id = json.loads(registry.run("run_sql", {"sql": "SELECT 1", "purpose": "Check"}, ctx).content)["result_id"]
     return registry, result_id
 
 
@@ -161,6 +161,7 @@ def days_registry(runner: FakeRunner, sql: str = "SELECT day FROM t LIMIT @days"
         description="Count days.",
         input_model=DaysInput,
         compile=lambda args: (sql, {"days": args.days}),
+        label=lambda args: "Days",
         preview_rows=5,
     )
     return ToolRegistry([tool])
@@ -191,3 +192,27 @@ def test_compiled_query_failures_go_back_to_the_model():
 
     assert output.is_error
     assert output.display["sql"] == "-- @days = 1\nBROKEN"
+
+
+def test_query_steps_carry_a_plain_language_label_for_the_user():
+    registry = ToolRegistry([run_sql_tool(FakeRunner(daily_result(3)), preview_rows=5)])
+
+    output = registry.run("run_sql", {"sql": "SELECT 1", "purpose": "Revenue by month"}, TurnContext())
+
+    assert output.display["label"] == "Revenue by month"
+
+
+def test_compiled_queries_are_labeled_from_their_input():
+    tool = compiled_query_tool(
+        FakeRunner(daily_result(3)),
+        name="count_days",
+        description="Count days.",
+        input_model=DaysInput,
+        compile=lambda args: ("SELECT 1", {}),
+        label=lambda args: f"First {args.days} days",
+        preview_rows=5,
+    )
+
+    output = ToolRegistry([tool]).run("count_days", {"days": 3}, TurnContext())
+
+    assert output.display["label"] == "First 3 days"

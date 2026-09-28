@@ -28,6 +28,22 @@ describe('applyEvent', () => {
     expect(finished.blocks[0]).toMatchObject({ status: 'done', totalRows: 1, rows: [{ n: 1 }] })
   })
 
+  it('labels a query step with its purpose, then the label the server settled on', () => {
+    const started = apply([
+      { type: 'tool_started', tool_use_id: 'a', name: 'run_sql', input: { sql: 'SELECT 1', purpose: 'Revenue by month' } },
+    ])
+    expect(started.blocks[0]).toMatchObject({ label: 'Revenue by month' })
+
+    const finished = applyEvent(started, {
+      type: 'tool_finished',
+      tool_use_id: 'a',
+      name: 'run_sql',
+      is_error: false,
+      display: { label: 'Revenue by month', sql: 'SELECT 1', columns: [], rows: [], total_rows: 3 },
+    })
+    expect(finished.blocks[0]).toMatchObject({ label: 'Revenue by month', totalRows: 3 })
+  })
+
   it('shows a metrics query as a query step with the SQL generated for it', () => {
     const turn = apply([
       { type: 'tool_started', tool_use_id: 'm', name: 'query_metrics', input: { metrics: ['revenue'] } },

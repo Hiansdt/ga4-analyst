@@ -23,4 +23,8 @@ describe('QueryStep summary', () => {
   it('leaves out the count when the total is missing', () => {
     expect(summary({})).toBe('Queried the data')
   })
+  it('names the step by what it computed', () => {
+    expect(summary({ label: 'Revenue by month', totalRows: 3 })).toBe('Revenue by month, 3 rows')
+    expect(summary({ label: 'Revenue by month', status: 'running' })).toBe('Revenue by month')
+  })
 })

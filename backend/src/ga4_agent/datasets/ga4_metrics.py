@@ -147,6 +147,26 @@ def compile_query(query: MetricsQuery) -> tuple[str, dict]:
     return f"WITH\n{BUILDING_BLOCKS}\n{select}", params
 
 
+def describe(query: MetricsQuery) -> str:
+    """A plain-language label for the query, e.g. "Revenue and sessions by device, Dec 1 to Dec 31, 2020"."""
+    names = [metric.removesuffix("_pct").replace("_", " ") for metric in query.metrics]
+    label = _join_words(names).capitalize()
+    if query.by:
+        label += f" by {query.by}"
+    if query.filters:
+        label += f" for {_join_words([value for values in query.filters.values() for value in values])}"
+    if (query.start, query.end) != (DATASET_START, DATASET_END):
+        start = f"{query.start:%b} {query.start.day}"
+        if query.start.year != query.end.year:
+            start += f", {query.start.year}"
+        label += f", {start} to {query.end:%b} {query.end.day}, {query.end.year}"
+    return label
+
+
+def _join_words(words: list[str]) -> str:
+    return words[0] if len(words) == 1 else f"{', '.join(words[:-1])} and {words[-1]}"
+
+
 def _aggregate(block: Block, query: MetricsQuery) -> str:
     columns = [f"{block.metrics[metric]} AS {metric}" for metric in query.metrics if metric in block.metrics]
     where = [f"{block.date_column} BETWEEN @start AND @end"]

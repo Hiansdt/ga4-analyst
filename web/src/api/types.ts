@@ -16,6 +16,7 @@ export interface ChartSpec {
 }
 
 export interface QueryDisplay {
+  label?: string
   sql: string
   result_id?: string
   columns?: Column[]

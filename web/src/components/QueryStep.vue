@@ -16,11 +16,13 @@ const PREVIEW_ROWS = 8
 const summary = computed(() => {
   switch (props.step.status) {
     case 'running':
-      return 'Querying the data'
+      return props.step.label ?? 'Querying the data'
     case 'failed':
       return 'Query failed, the assistant corrected it'
-    case 'done':
-      return props.step.totalRows === undefined ? 'Queried the data' : `Queried the data, ${rowCount(props.step.totalRows)}`
+    case 'done': {
+      const label = props.step.label ?? 'Queried the data'
+      return props.step.totalRows === undefined ? label : `${label}, ${rowCount(props.step.totalRows)}`
+    }
   }
 })
 

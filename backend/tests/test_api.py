@@ -51,7 +51,7 @@ def ask(client: TestClient, conversation_id: str, question: str) -> list[tuple[s
 
 
 def test_a_question_streams_typed_events():
-    sql_turn = ModelTurn(content=[tool_use("a", "run_sql", sql="SELECT 1")], stop_reason="tool_use")
+    sql_turn = ModelTurn(content=[tool_use("a", "run_sql", sql="SELECT 1", purpose="Check")], stop_reason="tool_use")
     client, _ = make_client(sql_turn, answer("There were 3 days."))
     conversation_id = client.post("/api/conversations").json()["id"]
 

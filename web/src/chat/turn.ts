@@ -8,6 +8,7 @@ export type Block =
   | {
       kind: 'query'
       id: string
+      label?: string // what the query computes, in plain words
       sql: string
       status: 'running' | 'done' | 'failed'
       columns?: Column[]
@@ -44,7 +45,13 @@ export function applyEvent(turn: Turn, event: AgentEvent): Turn {
     case 'tool_started': {
       const block: Block =
         QUERY_TOOLS.has(event.name)
-          ? { kind: 'query', id: event.tool_use_id, sql: String(event.input.sql ?? ''), status: 'running' }
+          ? {
+              kind: 'query',
+              id: event.tool_use_id,
+              label: typeof event.input.purpose === 'string' ? event.input.purpose : undefined,
+              sql: String(event.input.sql ?? ''),
+              status: 'running',
+            }
           : { kind: 'pending', id: event.tool_use_id, name: event.name }
       return { ...turn, blocks: [...turn.blocks, block] }
     }
@@ -61,10 +68,10 @@ function finishBlock(block: Block, event: Extract<AgentEvent, { type: 'tool_fini
   if (!('id' in block) || block.id !== event.tool_use_id) return [block]
   if (block.kind === 'query') {
     const display = event.display as QueryDisplay
-    const sql = display.sql ?? block.sql
+    const settled = { ...block, label: display.label ?? block.label, sql: display.sql ?? block.sql }
     return event.is_error
-      ? [{ ...block, sql, status: 'failed', error: display.error }]
-      : [{ ...block, sql, status: 'done', columns: display.columns, rows: display.rows, totalRows: display.total_rows }]
+      ? [{ ...settled, status: 'failed', error: display.error }]
+      : [{ ...settled, status: 'done', columns: display.columns, rows: display.rows, totalRows: display.total_rows }]
   }
   // A chart that failed validation is the model's to fix; the user only sees the chart it then makes.
   return event.is_error ? [] : [{ kind: 'chart', id: block.id, chart: event.display as ChartSpec }]

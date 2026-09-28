@@ -36,6 +36,7 @@ def build_agent(settings: Settings) -> Agent:
         description=ga4_metrics.DESCRIPTION,
         input_model=ga4_metrics.MetricsQuery,
         compile=ga4_metrics.compile_query,
+        label=ga4_metrics.describe,
         preview_rows=settings.preview_rows,
     )
     return Agent(

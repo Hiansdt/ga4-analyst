@@ -16,7 +16,7 @@ def answer(value: str) -> ModelTurn:
 
 
 def sql_call(tool_use_id: str, sql: str) -> ModelTurn:
-    return ModelTurn(content=[tool_use(tool_use_id, "run_sql", sql=sql)], stop_reason="tool_use")
+    return ModelTurn(content=[tool_use(tool_use_id, "run_sql", sql=sql, purpose="Check")], stop_reason="tool_use")
 
 
 def test_plain_answer_streams_text_and_completes_the_turn():
@@ -39,7 +39,10 @@ def test_history_is_sent_before_the_new_message():
 
 def test_tool_calls_run_and_their_results_go_back_in_one_user_message():
     turn = ModelTurn(
-        content=[tool_use("a", "run_sql", sql="SELECT 1"), tool_use("b", "run_sql", sql="SELECT 2")],
+        content=[
+            tool_use("a", "run_sql", sql="SELECT 1", purpose="Check"),
+            tool_use("b", "run_sql", sql="SELECT 2", purpose="Check"),
+        ],
         stop_reason="tool_use",
     )
     model = ScriptedModel(turn, answer("Done."))
@@ -87,7 +90,7 @@ def test_model_errors_fail_the_turn_but_keep_a_valid_history():
 
 
 def test_unexpected_stop_reason_fails_the_turn_without_keeping_the_partial_reply():
-    truncated = ModelTurn(content=[tool_use("a", "run_sql", sql="SELECT")], stop_reason="max_tokens")
+    truncated = ModelTurn(content=[tool_use("a", "run_sql", sql="SELECT", purpose="Check")], stop_reason="max_tokens")
 
     events = list(make_agent(ScriptedModel(truncated)).run_turn([], "Query"))
 
@@ -106,7 +109,9 @@ def test_running_out_of_steps_without_an_answer_fails_the_turn():
 
 def test_token_usage_is_summed_across_steps():
     first = ModelTurn(
-        content=[tool_use("a", "run_sql", sql="SELECT 1")], stop_reason="tool_use", usage=Usage(100, 10, 0, 90)
+        content=[tool_use("a", "run_sql", sql="SELECT 1", purpose="Check")],
+        stop_reason="tool_use",
+        usage=Usage(100, 10, 0, 90),
     )
     second = ModelTurn(content=[text("Done.")], stop_reason="end_turn", usage=Usage(120, 20, 90, 0))
 
