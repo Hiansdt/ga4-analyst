@@ -17,7 +17,7 @@ from evals.cases import CASES, Case
 from ga4_agent.agent import Agent
 from ga4_agent.bootstrap import build_agent
 from ga4_agent.config import Settings
-from ga4_agent.events import TextDelta, ToolFinished, TurnCompleted, TurnFailed
+from ga4_agent.events import TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
 from ga4_agent.llm import Usage
 
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -34,6 +34,7 @@ class Outcome:
     failures: list[str]
     queries: int
     failed_queries: int
+    tools: list[str]  # tools called, in order
     seconds: float
     cost_usd: float
     answer: str
@@ -53,8 +54,11 @@ def run_case(agent: Agent, model: str, case: Case) -> Outcome:
     started = time.monotonic()
     answer, failures, queries, failed_queries, usage = "", [], 0, 0, Usage()
     charts: list[tuple[str, int]] = []
+    tools: list[str] = []
     for event in agent.run_turn([], case.question):
         match event:
+            case ToolStarted(name=name):
+                tools.append(name)
             case TextDelta(text):
                 answer += text
             case ToolFinished(name="create_chart", is_error=False, display=chart):
@@ -76,6 +80,7 @@ def run_case(agent: Agent, model: str, case: Case) -> Outcome:
         failures=failures,
         queries=queries,
         failed_queries=failed_queries,
+        tools=tools,
         seconds=round(time.monotonic() - started, 1),
         cost_usd=round(cost(model, usage), 4),
         answer=answer,
@@ -83,12 +88,12 @@ def run_case(agent: Agent, model: str, case: Case) -> Outcome:
 
 
 def print_scorecard(outcomes: list[Outcome]) -> None:
-    print(f"\n{'model':<18} {'case':<26} {'result':<6} {'queries':>7} {'secs':>6} {'cost':>7}  failures")
+    print(f"\n{'model':<18} {'case':<26} {'result':<6} {'queries':>7} {'metrics':>7} {'secs':>6} {'cost':>7}  failures")
     for o in outcomes:
         queries = f"{o.queries}" + (f" ({o.failed_queries}x)" if o.failed_queries else "")
         result = "PASS" if o.passed else "FAIL"
         print(
-            f"{o.model:<18} {o.case:<26} {result:<6} {queries:>7} {o.seconds:>6} "
+            f"{o.model:<18} {o.case:<26} {result:<6} {queries:>7} {o.tools.count('query_metrics'):>7} {o.seconds:>6} "
             f"${o.cost_usd:>6.3f}  {'; '.join(o.failures)}"
         )
     for model in dict.fromkeys(o.model for o in outcomes):
