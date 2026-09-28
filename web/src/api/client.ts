@@ -16,6 +16,10 @@ export async function loadConversation(id: string): Promise<StoredTurn[]> {
   return (await response.json()).turns
 }
 
+// TODO(ui-harden): Replace HTTP status codes in user-facing errors with plain sentences
+// WHY: messages like "The question could not be sent (500)" mean nothing to a business user
+// DONE-WHEN: a vitest test with fetch returning 500 gets the error "The analyst is unavailable right now. Please try again in a minute."
+
 /** Post a question and call onEvent for every event of the streamed answer. */
 export async function askQuestion(id: string, question: string, onEvent: (event: AgentEvent) => void): Promise<void> {
   const response = await fetch(`/api/conversations/${id}/messages`, {

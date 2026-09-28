@@ -6,6 +6,17 @@ const props = defineProps<{ step: Extract<Block, { kind: 'query' }> }>()
 
 const PREVIEW_ROWS = 8
 
+// TODO(ui-harden): Pluralize row counts and handle a missing total
+// WHY: the summary reads "1 rows", or "undefined rows" when total_rows is absent
+// DONE-WHEN: summaries read "1 row", "2,304 rows", and "Queried the data" when totalRows is undefined
+
+// TODO(ui-clarify): Say "corrected it" only when a later query in the turn succeeded
+// WHY: the failed-step label claims a correction that may never have happened
+// DONE-WHEN: a turn whose only query failed shows "Query failed" without "corrected it"
+
+// TODO(ui-a11y): Show the "show SQL" cue on keyboard focus and to touch users
+// WHY: the cue only appears on hover, so keyboard and touch users see an unlabeled muted line
+// DONE-WHEN: tabbing to a query step shows "show SQL" next to its summary
 const summary = computed(() => {
   switch (props.step.status) {
     case 'running':

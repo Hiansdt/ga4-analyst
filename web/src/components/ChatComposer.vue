@@ -5,6 +5,13 @@ defineProps<{ busy: boolean }>()
 const emit = defineEmits<{ ask: [question: string] }>()
 const draft = ref('')
 
+// TODO(ui-harden): Keep the typed question when Enter is pressed while an answer is streaming
+// WHY: submit() clears the draft although useChat.ask() ignores questions while busy, so the follow-up is lost
+// DONE-WHEN: a vitest test mounting ChatComposer with busy=true, typing "next" and pressing Enter emits nothing and keeps "next" in the textarea
+
+// TODO(ui-a11y): Add :focus-visible rings to the composer textarea and the Ask button
+// WHY: the textarea removes its outline and only changes a 1px border color on focus
+// DONE-WHEN: keyboard focus on the textarea and on the Ask button shows a ring with at least 3:1 contrast against the page
 function submit(): void {
   const question = draft.value.trim()
   if (!question) return

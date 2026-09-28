@@ -4,6 +4,9 @@ import type { ChartSpec } from '../api/types'
 import { echarts } from '../charts/echarts'
 import { buildOption } from '../charts/options'
 
+// TODO(ui-a11y): Expose each chart's data to screen readers as a table
+// WHY: charts are role="img" labeled only by their title; the values live in hover tooltips
+// DONE-WHEN: every rendered chart has aria-describedby pointing to a visually hidden table with the same rows, and axe reports no violations on it
 const props = defineProps<{ chart: ChartSpec }>()
 const container = useTemplateRef<HTMLDivElement>('container')
 

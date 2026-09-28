@@ -11,6 +11,10 @@
   --ink-secondary: #52514e;
   --ink-muted: #75746f;
 
+  /* TODO(ui-a11y): Darken the accent used for text and the Ask button to reach 4.5:1
+   * WHY: #2a78d6 is 4.3:1 on the page and about 4.4:1 under white button text, below AA for small text
+   * DONE-WHEN: the Impeccable detector reports no low-contrast findings on the empty state or the enabled Ask button
+   */
   --accent: #2a78d6;
   --accent-2: #eb6834;
   --good: #1baf7a;

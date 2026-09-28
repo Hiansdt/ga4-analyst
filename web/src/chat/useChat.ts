@@ -12,6 +12,9 @@ export function useChat() {
   const notice = ref<string | null>(null)
   let conversationId: string | null = null
 
+  // TODO(ui-harden): Keep the saved chat id when restoring fails for reasons other than expiry
+  // WHY: any network or 5xx error during restore forgets the saved conversation for good
+  // DONE-WHEN: with GET /api/conversations/{id} returning 500, the id stays in localStorage and a "Couldn't load your chat" notice with a retry is shown
   async function restore(): Promise<void> {
     const saved = readSavedId()
     if (!saved) return
@@ -24,6 +27,13 @@ export function useChat() {
     }
   }
 
+  // TODO(ui-harden): Add a Stop control that aborts the streaming answer
+  // WHY: an answer takes about 20 seconds and costs money; a regretted question cannot be cancelled
+  // DONE-WHEN: clicking Stop mid-answer cancels the fetch (visible in the network tab), marks the turn "Stopped" and re-enables the composer
+  
+  // TODO(ui-clarify): Mark a chat restart in the log with a persistent divider and dim the earlier turns
+  // WHY: after an idle expiry, follow-ups lose their context while earlier turns still look live; the notice sits off-screen and clears on the next ask
+  // DONE-WHEN: after forcing a 404 mid-chat, the log shows "Chat restarted after 15 minutes idle. Earlier questions are not in context." between turns, and earlier turns render dimmed
   async function ask(question: string): Promise<void> {
     if (busy.value || !question.trim()) return
     busy.value = true

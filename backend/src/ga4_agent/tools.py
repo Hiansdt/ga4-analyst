@@ -62,6 +62,9 @@ def _error(message: str, display: dict[str, Any] | None = None) -> ToolOutput:
     return ToolOutput(content=message, display=display or {"error": message}, is_error=True)
 
 
+# TODO(ui-clarify): Add a short `purpose` field to run_sql and show it as the query step label
+# WHY: every step reads "Queried the data, N rows", so readers cannot tell which query produced which number
+# DONE-WHEN: a run_sql call with purpose "Revenue by month" renders the step summary "Revenue by month, 3 rows"
 class RunSqlInput(BaseModel):
     sql: str = Field(description="One BigQuery Standard SQL SELECT statement, starting from the building blocks.")
 

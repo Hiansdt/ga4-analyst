@@ -10,6 +10,14 @@ const end = useTemplateRef<HTMLDivElement>('end')
 
 onMounted(restore)
 
+// TODO(ui-harden): Auto-scroll only when the reader is already near the bottom
+// WHY: scrolling up to read SQL mid-answer gets pulled back down on every text delta
+// DONE-WHEN: scrolled 400px above the bottom while an answer streams, the view stays put; at the bottom it keeps following
+
+// TODO(ui-a11y): Replace the page-wide live region with short status announcements
+// WHY: the whole transcript is aria-live and the answer re-renders on every text delta, so screen readers repeat fragments
+// DONE-WHEN: with Orca or NVDA, asking a question announces "Running query" and "Answer ready" once each instead of the streaming text
+
 // Follow the answer as it streams in.
 watch(
   () => turns.value.at(-1),

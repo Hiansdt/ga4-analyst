@@ -6,6 +6,13 @@ import QueryStep from './QueryStep.vue'
 
 const props = defineProps<{ turn: Turn }>()
 
+// TODO(ui-harden): Treat text followed only by charts as answer text, not narration
+// WHY: when the model writes its answer before calling create_chart, the answer is styled as muted narration
+// DONE-WHEN: a component test rendering a turn with blocks [text, chart] finds no .narration element
+
+// TODO(ui-harden): Add a "Try again" button on a failed turn that re-sends its question
+// WHY: after a failure the user has to retype the question from memory
+// DONE-WHEN: a turn_failed event renders a "Try again" button whose click calls ask() with the same question text
 // Text written right before a tool call is the model narrating its steps, not part of the answer.
 function isNarration(index: number): boolean {
   const next = props.turn.blocks[index + 1]

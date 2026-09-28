@@ -3,6 +3,9 @@ import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { computed } from 'vue'
 
+// TODO(ui-a11y): Give the conversation an h1 and render model headings below the question level
+// WHY: once a chat exists there is no h1, and model headings render as h2 like the questions, flattening the outline
+// DONE-WHEN: the accessibility tree shows one h1, questions as h2 and answer headings as h3 or lower
 const props = defineProps<{ text: string }>()
 
 // Model output is untrusted: sanitize the rendered HTML before it reaches the page.

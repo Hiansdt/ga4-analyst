@@ -33,3 +33,6 @@ convos/
 
 # Eval run outputs
 backend/evals/results/
+
+# Impeccable design-review snapshots
+.impeccable/
