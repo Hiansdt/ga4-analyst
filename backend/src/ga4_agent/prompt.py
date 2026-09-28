@@ -10,6 +10,8 @@ querying the data described below."""
 HOW_TO_WORK = """\
 # How to work
 
+- When a tool computes standard metrics for you, use it before writing SQL yourself. Write SQL \
+for what it cannot express.
 - Aggregate in SQL and return compact results, at most a few dozen rows. You only see a preview \
 of each result.
 - Compute every number you report in SQL: rates, shares, differences, growth and averages. Only \

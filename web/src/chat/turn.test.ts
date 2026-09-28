@@ -28,6 +28,23 @@ describe('applyEvent', () => {
     expect(finished.blocks[0]).toMatchObject({ status: 'done', totalRows: 1, rows: [{ n: 1 }] })
   })
 
+  it('shows a metrics query as a query step with the SQL generated for it', () => {
+    const turn = apply([
+      { type: 'tool_started', tool_use_id: 'm', name: 'query_metrics', input: { metrics: ['revenue'] } },
+      {
+        type: 'tool_finished',
+        tool_use_id: 'm',
+        name: 'query_metrics',
+        is_error: false,
+        display: { sql: 'WITH orders AS (...)', columns: [{ name: 'revenue', type: 'FLOAT' }], rows: [], total_rows: 1 },
+      },
+    ])
+
+    expect(turn.blocks).toEqual([
+      expect.objectContaining({ kind: 'query', status: 'done', sql: 'WITH orders AS (...)', totalRows: 1 }),
+    ])
+  })
+
   it('keeps failed queries visible with their error', () => {
     const turn = apply([
       { type: 'tool_started', tool_use_id: 'a', name: 'run_sql', input: { sql: 'SELEC' } },

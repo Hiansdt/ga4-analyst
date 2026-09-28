@@ -1,9 +1,17 @@
 import json
 
 from fakes import FakeRunner, daily_result
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from ga4_agent.tools import Tool, ToolOutput, ToolRegistry, TurnContext, create_chart_tool, run_sql_tool
+from ga4_agent.tools import (
+    Tool,
+    ToolOutput,
+    ToolRegistry,
+    TurnContext,
+    compiled_query_tool,
+    create_chart_tool,
+    run_sql_tool,
+)
 
 
 class EchoInput(BaseModel):
@@ -140,3 +148,46 @@ def test_funnel_and_pie_take_a_single_value_column():
     )
 
     assert output.is_error
+
+
+class DaysInput(BaseModel):
+    days: int = Field(ge=1)
+
+
+def days_registry(runner: FakeRunner, sql: str = "SELECT day FROM t LIMIT @days") -> ToolRegistry:
+    tool = compiled_query_tool(
+        runner,
+        name="count_days",
+        description="Count days.",
+        input_model=DaysInput,
+        compile=lambda args: (sql, {"days": args.days}),
+        preview_rows=5,
+    )
+    return ToolRegistry([tool])
+
+
+def test_compiled_query_runs_the_generated_sql_with_its_parameters():
+    runner, ctx = FakeRunner(daily_result(3)), TurnContext()
+
+    output = days_registry(runner).run("count_days", {"days": 3}, ctx)
+
+    assert runner.queries == ["SELECT day FROM t LIMIT @days"]
+    assert runner.params == [{"days": 3}]
+    assert json.loads(output.content)["result_id"] in ctx.results
+    assert output.display["sql"] == "-- @days = 3\nSELECT day FROM t LIMIT @days"
+
+
+def test_compiled_query_input_errors_go_back_to_the_model_without_querying():
+    runner = FakeRunner(daily_result(3))
+
+    output = days_registry(runner).run("count_days", {"days": 0}, TurnContext())
+
+    assert output.is_error
+    assert runner.queries == []
+
+
+def test_compiled_query_failures_go_back_to_the_model():
+    output = days_registry(FakeRunner(daily_result(3)), sql="BROKEN").run("count_days", {"days": 1}, TurnContext())
+
+    assert output.is_error
+    assert output.display["sql"] == "-- @days = 1\nBROKEN"

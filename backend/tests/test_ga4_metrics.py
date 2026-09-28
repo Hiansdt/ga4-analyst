@@ -109,7 +109,12 @@ def test_full_period_totals_match_the_verified_values(run):
     orders = run(metrics=["revenue", "orders", "buyers", "sessions"])
     traffic = run(metrics=["converted_sessions", "users"])
 
-    assert orders.rows[0] == {"revenue": pytest.approx(339457, abs=1), "orders": 4907, "buyers": 4055, "sessions": 360129}
+    assert orders.rows[0] == {
+        "revenue": pytest.approx(339457, abs=1),
+        "orders": 4907,
+        "buyers": 4055,
+        "sessions": 360129,
+    }
     assert traffic.rows[0] == {"converted_sessions": 4848, "users": 270154}
 
 

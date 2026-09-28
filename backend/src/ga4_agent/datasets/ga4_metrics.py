@@ -28,6 +28,20 @@ Metric = Literal[
 Breakdown = Literal["day", "week", "month", "device", "country", "channel", "source", "product", "category"]
 Segment = Literal["device", "country", "channel", "source", "product", "category"]
 
+DESCRIPTION = """\
+Compute the store's standard metrics without writing SQL. Prefer this over run_sql whenever it can \
+answer the question: its definitions are verified, so numbers stay consistent. Returns a result_id \
+for create_chart, like run_sql.
+
+Metrics: revenue (USD, duplicate purchases removed), orders, buyers (users with an order), \
+average_order_value, sessions (visits), converted_sessions (visits with a purchase), \
+conversion_rate_pct (converted sessions / sessions, already in percent), users (distinct browsers \
+or devices), product_revenue and units_sold (per product line; only by product or category).
+
+Breakdowns and filters: day, week, month, device, country, channel (acquisition medium: how the \
+user first arrived, e.g. organic, cpc, referral, (none) for direct), source, product, category. \
+For shares, growth or anything else these cannot express, use run_sql."""
+
 TIME_BREAKDOWNS = {
     "day": "{date}",
     "week": "DATE_TRUNC({date}, WEEK(MONDAY))",

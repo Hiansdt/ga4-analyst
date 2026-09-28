@@ -59,7 +59,7 @@ def run_case(agent: Agent, model: str, case: Case) -> Outcome:
                 answer += text
             case ToolFinished(name="create_chart", is_error=False, display=chart):
                 charts.append((chart["type"], len(chart["rows"])))
-            case ToolFinished(name="run_sql", is_error=is_error):
+            case ToolFinished(name="run_sql" | "query_metrics", is_error=is_error):
                 queries += 1
                 failed_queries += is_error
             case TurnFailed(message):

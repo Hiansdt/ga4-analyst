@@ -32,6 +32,8 @@ def render(event: Event) -> None:
         case ToolStarted(name="run_sql", input=tool_input):
             sql = tool_input.get("sql", "").strip().replace("\n", "\n    ")
             print(f"\n{DIM}  running SQL:\n    {sql}{RESET}")
+        case ToolStarted(name="query_metrics", input=tool_input):
+            print(f"\n{DIM}  querying metrics: {tool_input}{RESET}")
         case ToolStarted(name=name):
             print(f"\n{DIM}  calling {name}{RESET}")
         case ToolFinished(is_error=True, display=display):

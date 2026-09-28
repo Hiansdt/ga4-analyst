@@ -9,11 +9,11 @@ from ga4_agent.adapters.bigquery import BigQueryRunner
 from ga4_agent.agent import Agent
 from ga4_agent.api import create_app
 from ga4_agent.config import Settings
-from ga4_agent.datasets import ga4
+from ga4_agent.datasets import ga4, ga4_metrics
 from ga4_agent.prompt import build_system_prompt
 from ga4_agent.ratelimit import RateLimiter
 from ga4_agent.store import InMemoryStore
-from ga4_agent.tools import ToolRegistry, create_chart_tool, run_sql_tool
+from ga4_agent.tools import ToolRegistry, compiled_query_tool, create_chart_tool, run_sql_tool
 
 
 def build_agent(settings: Settings) -> Agent:
@@ -30,9 +30,17 @@ def build_agent(settings: Settings) -> Agent:
         max_tokens=settings.anthropic_max_tokens,
         effort=settings.anthropic_effort,
     )
+    metrics = compiled_query_tool(
+        runner,
+        name="query_metrics",
+        description=ga4_metrics.DESCRIPTION,
+        input_model=ga4_metrics.MetricsQuery,
+        compile=ga4_metrics.compile_query,
+        preview_rows=settings.preview_rows,
+    )
     return Agent(
         model=model,
-        tools=ToolRegistry([run_sql_tool(runner, preview_rows=settings.preview_rows), create_chart_tool()]),
+        tools=ToolRegistry([metrics, run_sql_tool(runner, preview_rows=settings.preview_rows), create_chart_tool()]),
         system_prompt=build_system_prompt(ga4.CONTEXT),
         max_steps=settings.max_agent_steps,
     )

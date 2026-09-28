@@ -37,7 +37,7 @@ const rows = computed(() => props.step.rows?.slice(0, PREVIEW_ROWS) ?? [])
       {{ summary }}
     </summary>
     <p v-if="step.error" class="error">{{ step.error }}</p>
-    <pre><code>{{ step.sql.trim() }}</code></pre>
+    <pre v-if="step.sql"><code>{{ step.sql.trim() }}</code></pre>
     <div v-if="rows.length" class="table-wrap">
       <table>
         <thead>
