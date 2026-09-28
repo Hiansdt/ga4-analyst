@@ -33,13 +33,14 @@ Example: *"Which device converts best?"*
 
 ## Design principles
 
-- **One reason to change per module.** Metric definitions change only `prompt.py`, SQL safety rules only `sql.py`, the HTTP contract only `api.py`.
+- **One reason to change per module.** Metric definitions change only `datasets/ga4.py`, analyst behavior only `prompt.py`, SQL safety rules only `sql.py`, the HTTP contract only `api.py`.
 - **Open for extension.** Tools are registered as `{name, input schema, handler}`; adding one does not change the loop.
 - **Functional core, imperative shell.** Decisions such as the SQL guard and the frontend event reducer are pure functions, unit tested without I/O.
 - **Defense in depth.** The service account can only run queries (no data access beyond the public dataset). Queries must dry-run as a single `SELECT` over the allowlisted dataset. Jobs run with `maximum_bytes_billed`, results are row-capped, the loop has a step limit, and the public endpoint is rate limited.
 - **Single source of truth.** Chart data comes from query results, never from numbers the model writes. Metric definitions (deduplicated orders, sessions, channel) live in one set of SQL building blocks that every query reuses.
 - **Errors as data for the model, exceptions for the system.** Tool failures return to Claude so it can recover. Infrastructure failures surface to the user as an error event.
 - **Validation at the edges.** Pydantic validates HTTP input and tool input; the core works with typed data.
+- **Dataset knowledge is separate from analyst behavior.** `prompt.py` is dataset-agnostic; everything GA4- or BigQuery-specific lives in `datasets/ga4.py` and the BigQuery adapter. There is no dataset interface yet: with one dataset it would be speculative.
 - **Abstractions only where a second implementation exists.** Interfaces exist for the LLM, the SQL runner and the store because tests and planned persistence need them. Everything else is plain functions: no DI container, no class hierarchies.
 
 ## Testing

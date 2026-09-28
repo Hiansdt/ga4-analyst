@@ -23,3 +23,11 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.9",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not bigquery'"
+markers = ["bigquery: hits real BigQuery (run with: pytest -m bigquery)"]
+
+[tool.ruff]
+line-length = 120
