@@ -51,3 +51,13 @@ def test_order_items_are_not_multiplied_by_item_count(client):
 def test_order_queries_skip_event_params(client):
     # Reading event_params costs ~1 GB; orders must not depend on it.
     assert dry_run_bytes(client, "SELECT SUM(revenue) FROM orders") < 300 * 10**6
+
+
+def test_user_funnel_is_closed_so_steps_only_shrink(client):
+    row = query_one(
+        client,
+        "SELECT COUNTIF(viewed_item) AS viewed, COUNTIF(added_to_cart) AS carted, "
+        "COUNTIF(began_checkout) AS checkout, COUNTIF(purchased) AS purchased FROM user_funnel",
+    )
+
+    assert row == {"viewed": 61252, "carted": 12539, "checkout": 5656, "purchased": 2915}

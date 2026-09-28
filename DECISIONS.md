@@ -23,6 +23,7 @@ Found while exploring the data. They are baked into the system prompt so every a
 - **Users and sessions.**
   - Users = `user_pseudo_id`, since `user_id` is always empty.
   - Sessions = distinct `user_pseudo_id` + `ga_session_id` (360,129). Counting `session_start` events undercounts (354,970).
+- **Funnels are closed.** Each step counts users who also did every earlier step, so counts only shrink. About a third of buyers (1,504 of 4,419) have no logged view, cart or checkout event, so the funnel ends below total buyers, and answers say so.
 - **"Now" is the end of the dataset.** Relative dates such as "last month" are anchored to 2021-01-31, and the answer says so.
 
 ## Technical decisions
@@ -45,7 +46,7 @@ Found while exploring the data. They are baked into the system prompt so every a
 
 ## Where I got stuck
 
-_Filled in during the build._
+- **The first manual test gave confidently wrong numbers.** "How are we doing?" reported $1.45M revenue instead of $339,457: the model joined visits to orders row by row, which repeats each order once per visit. Other answers contradicted themselves (arithmetic done in the model's head) and blamed "data quality" for a >100% rate that its own query produced. I added four prompt rules: compute every reported number in SQL, aggregate each table before joining, treat impossible numbers as a query bug, and check against reference totals. Rerunning the same questions then returned correct figures, even on the smaller model.
 
 ## With another 40 hours
 

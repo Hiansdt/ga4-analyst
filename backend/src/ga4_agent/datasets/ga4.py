@@ -78,6 +78,23 @@ order_items AS (
     i.quantity,
     i.item_revenue
   FROM orders AS o, UNNEST(o.items) AS i
+),
+user_funnel AS (
+  SELECT
+    user_pseudo_id,
+    ANY_VALUE(device_category) AS device_category,
+    ANY_VALUE(country) AS country,
+    ANY_VALUE(acquisition_source) AS acquisition_source,
+    ANY_VALUE(acquisition_medium) AS acquisition_medium,
+    LOGICAL_OR(event_name = 'view_item') AS viewed_item,
+    LOGICAL_OR(event_name = 'view_item') AND LOGICAL_OR(event_name = 'add_to_cart') AS added_to_cart,
+    LOGICAL_OR(event_name = 'view_item') AND LOGICAL_OR(event_name = 'add_to_cart')
+      AND LOGICAL_OR(event_name = 'begin_checkout') AS began_checkout,
+    LOGICAL_OR(event_name = 'view_item') AND LOGICAL_OR(event_name = 'add_to_cart')
+      AND LOGICAL_OR(event_name = 'begin_checkout') AND LOGICAL_OR(event_name = 'purchase') AS purchased
+  FROM events
+  WHERE event_name IN ('view_item', 'add_to_cart', 'begin_checkout', 'purchase')
+  GROUP BY user_pseudo_id
 )"""
 
 CONTEXT = f"""\
@@ -94,6 +111,7 @@ that the data does not cover it instead of guessing.
 - Google obfuscated part of this dataset for privacy. Values such as `<Other>`, `(data deleted)`, \
 `(not set)` and empty strings are placeholders, not real categories. Leave them out of rankings \
 unless asked, and mention them when they are a large share of the total.
+- There is no cost, margin, stock or marketing spend data. Don't draw conclusions that need it.
 
 # Building blocks
 
@@ -112,9 +130,17 @@ true when the visit included a purchase.
 - `orders`: one row per order, with duplicate purchase events removed. `revenue` is the order \
 total in USD.
 - `order_items`: one row per product line of an order.
+- `user_funnel`: one row per user who reached the funnel, with one flag per step. Each flag \
+requires every earlier step too (a closed funnel), so counts only shrink from step to step.
 
 Reading `event_params` (which `sessions` does) scans about 1 GB over the full date range; the \
 other blocks scan a small fraction of that. Use `sessions` only when the question is about visits.
+
+# Reference totals
+
+Full-period values from the building blocks, for sanity checks: revenue $339,457, orders 4,907, \
+buyers 4,055, users 270,154, sessions 360,129, converted sessions 4,848 (1.35% conversion rate). \
+A total above these, or a share or rate above 100%, means the query is wrong.
 
 # Metric definitions
 
@@ -130,9 +156,13 @@ after unnesting items: that counts the order once per item.
 `acquisition_medium`). Call it "acquisition channel (how the user first arrived)". Mediums: \
 `organic` is unpaid search, `cpc` is paid ads, `referral` is a link on another site, `(none)` is \
 direct traffic, plus `affiliate` and the placeholders above.
-- Funnels count distinct users (or sessions) reaching each step, in this order: `view_item`, \
-`add_to_cart`, `begin_checkout`, `add_shipping_info`, `add_payment_info`, `purchase`. Build them \
-from `events`.
+- Funnels come from `user_funnel`: `COUNTIF(viewed_item)`, `COUNTIF(added_to_cart)` and so on, \
+with step rates computed in the same query. Tracking has gaps: about a third of buyers (1,504 of \
+4,419) have no logged product view, cart or checkout event, so the funnel's last step (2,915) is \
+below the number of buyers. Say so when you present a funnel.
+- To compare channels, devices or countries fairly, divide by that segment's own traffic: \
+aggregate `sessions` by segment for the denominator, aggregate `orders` by segment for the \
+numerator, then join the two aggregated results on the segment.
 - Product categories are inconsistent (`Apparel` next to `Home/Apparel/Men's/`). Mention it when \
 you group by category.
 - Other event parameters are read with \
