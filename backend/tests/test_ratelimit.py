@@ -1,4 +1,4 @@
-from ga4_agent.ratelimit import RateLimiter
+from analyst.api.ratelimit import RateLimiter
 
 
 class FakeClock:

@@ -3,12 +3,13 @@ import json
 from fakes import FakeRunner, ScriptedModel, daily_result, text, tool_use
 from fastapi.testclient import TestClient
 
-from ga4_agent.agent import Agent
-from ga4_agent.api import create_app
-from ga4_agent.llm import ModelTurn
-from ga4_agent.ratelimit import RateLimiter
-from ga4_agent.store import InMemoryStore
-from ga4_agent.tools import ToolRegistry, run_sql_tool
+from analyst.adapters.memory_store import InMemoryStore
+from analyst.api.app import create_app
+from analyst.api.ratelimit import RateLimiter
+from analyst.core.agent import Agent
+from analyst.core.registry import ToolRegistry
+from analyst.ports.llm import ModelTurn
+from analyst.tools.queries import run_sql_tool
 
 
 def answer(value: str) -> ModelTurn:

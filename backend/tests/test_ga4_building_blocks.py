@@ -5,7 +5,7 @@ import os
 import pytest
 from google.cloud import bigquery
 
-from ga4_agent.datasets.ga4 import BUILDING_BLOCKS
+from analyst.datasets.ga4 import BUILDING_BLOCKS
 
 pytestmark = pytest.mark.bigquery
 

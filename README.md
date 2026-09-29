@@ -29,11 +29,11 @@ cp .env.example .env   # then fill in ANTHROPIC_API_KEY and GCP_PROJECT_ID
 Development, with the API and the Vite dev server in two terminals:
 
 ```
-cd backend && uv run --env-file ../.env uvicorn ga4_agent.bootstrap:build_app --factory --port 8000
+cd backend && uv run --env-file ../.env uvicorn analyst.bootstrap:build_app --factory --port 8000
 cd web && npm install && npm run dev      # API_URL=http://localhost:<port> if the API is not on 8000
 ```
 
-A terminal client is also available: `cd backend && uv run --env-file ../.env ga4-agent`.
+A terminal client is also available: `cd backend && uv run --env-file ../.env analyst`.
 
 ## Deploying
 
@@ -60,13 +60,25 @@ deploy/cloudrun.sh
             └────────────────────────────────────────────┘
 ```
 
+Code layout (`backend/src/analyst/`), one folder per layer:
+
+```
+bootstrap.py  config.py  cli.py   composition root, settings, terminal client
+core/       the agent: loop, events, prompt, tool registry, SQL guard. No vendor imports.
+ports/      interfaces the core depends on: LLM, SQL runner, conversation store
+adapters/   their implementations: Anthropic, BigQuery, in-memory store
+tools/      what the model can call: queries, charts, follow-up suggestions
+datasets/   knowledge about the GA4 dataset: building blocks, metric definitions
+api/        HTTP layer: endpoints, SSE, rate limit
+```
+
 - **Ports and adapters.** The agent core depends only on small interfaces. Anthropic, BigQuery and conversation storage are adapters, created in one place (the composition root, `bootstrap.py`, shared by the server and the terminal CLI) and passed in. The loop is tested with fakes, and storage can be swapped without touching the agent.
 - **Events as the contract.** The agent yields typed events. The SSE endpoint, the CLI and the tests are all consumers of the same stream, and the frontend mirrors the event types in TypeScript.
 - **Chat-shaped API.** Conversations are owned by the server behind a `ConversationStore` interface, so persisted chat history is a new store class, not a new contract.
 
 ## Design principles
 
-- **One reason to change per module.** Metric definitions change only `datasets/ga4.py`, analyst behavior only `prompt.py`, SQL safety rules only `sql.py`, the HTTP contract only `api.py`.
+- **One reason to change per module.** Metric definitions change only `datasets/ga4.py`, analyst behavior only `core/prompt.py`, SQL safety rules only `core/sql_guard.py`, the HTTP contract only `api/app.py`.
 - **Open for extension.** Tools are registered as `{name, input schema, handler}`; adding one does not change the loop.
 - **Functional core, imperative shell.** Decisions such as the SQL guard and the frontend event reducer are pure functions, unit tested without I/O.
 - **Defense in depth.** The service account can only run queries (no data access beyond the public dataset). Queries must dry-run as a single `SELECT` over the allowlisted dataset. Jobs run with `maximum_bytes_billed`, results are row-capped, the loop has a step limit, and the public endpoint is rate limited.

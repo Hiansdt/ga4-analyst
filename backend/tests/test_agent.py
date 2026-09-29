@@ -1,9 +1,10 @@
 from fakes import FakeRunner, ScriptedModel, daily_result, text, tool_use
 
-from ga4_agent.agent import Agent
-from ga4_agent.events import TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
-from ga4_agent.llm import ModelError, ModelTurn, Usage
-from ga4_agent.tools import ToolRegistry, run_sql_tool
+from analyst.core.agent import Agent
+from analyst.core.events import TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
+from analyst.core.registry import ToolRegistry
+from analyst.ports.llm import ModelError, ModelTurn, Usage
+from analyst.tools.queries import run_sql_tool
 
 
 def make_agent(model: ScriptedModel, max_steps: int = 5) -> Agent:

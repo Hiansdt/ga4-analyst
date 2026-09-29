@@ -1,6 +1,7 @@
 import pytest
 
-from ga4_agent.store import ConversationNotFound, InMemoryStore
+from analyst.adapters.memory_store import InMemoryStore
+from analyst.ports.store import ConversationNotFound
 
 
 def test_new_conversations_start_empty():

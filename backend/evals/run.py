@@ -13,12 +13,12 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from analyst.bootstrap import build_agent
+from analyst.config import Settings
+from analyst.core.agent import Agent
+from analyst.core.events import TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
+from analyst.ports.llm import Usage
 from evals.cases import CASES, Case
-from ga4_agent.agent import Agent
-from ga4_agent.bootstrap import build_agent
-from ga4_agent.config import Settings
-from ga4_agent.events import TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
-from ga4_agent.llm import Usage
 
 RESULTS_DIR = Path(__file__).parent / "results"
 

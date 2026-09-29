@@ -1,4 +1,4 @@
-// Mirrors the backend event contract (backend/src/ga4_agent/events.py and api.py).
+// Mirrors the backend event contract (backend/src/analyst/core/events.py and api/app.py).
 
 export interface Column {
   name: string

@@ -11,10 +11,10 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, StringConstraints
 
-from ga4_agent.agent import Agent
-from ga4_agent.events import Event, TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
-from ga4_agent.ratelimit import RateLimiter
-from ga4_agent.store import Conversation, ConversationNotFound, ConversationStore
+from analyst.api.ratelimit import RateLimiter
+from analyst.core.agent import Agent
+from analyst.core.events import Event, TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
+from analyst.ports.store import Conversation, ConversationNotFound, ConversationStore
 
 EVENT_TYPES = {
     TextDelta: "text_delta",

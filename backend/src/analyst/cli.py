@@ -1,8 +1,8 @@
-"""Terminal chat with the agent. Run: uv run --env-file ../.env ga4-agent"""
+"""Terminal chat with the agent. Run: uv run --env-file ../.env analyst"""
 
-from ga4_agent.bootstrap import build_agent
-from ga4_agent.config import Settings
-from ga4_agent.events import Event, TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
+from analyst.bootstrap import build_agent
+from analyst.config import Settings
+from analyst.core.events import Event, TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
 
 DIM, RED, RESET = "\033[2m", "\033[31m", "\033[0m"
 

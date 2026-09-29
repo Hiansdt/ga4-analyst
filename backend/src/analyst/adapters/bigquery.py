@@ -7,7 +7,8 @@ from typing import Any
 from google.api_core.exceptions import BadRequest, Forbidden, GoogleAPICallError
 from google.cloud import bigquery
 
-from ga4_agent.sql import Column, DryRun, QueryError, QueryParams, QueryResult, validate
+from analyst.core.sql_guard import validate
+from analyst.ports.sql import Column, DryRun, QueryError, QueryParams, QueryResult
 
 
 class BigQueryRunner:

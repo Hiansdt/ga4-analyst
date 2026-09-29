@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from ga4_agent.llm import Usage
+from analyst.ports.llm import Usage
 
 
 @dataclass(frozen=True)

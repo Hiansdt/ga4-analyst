@@ -2,9 +2,9 @@
 
 from collections.abc import Generator, Iterator
 
-from ga4_agent.events import Event, TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
-from ga4_agent.llm import ModelClient, ModelError, ModelTurn, Usage
-from ga4_agent.tools import ToolRegistry, TurnContext
+from analyst.core.events import Event, TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
+from analyst.core.registry import ToolRegistry, TurnContext
+from analyst.ports.llm import ModelClient, ModelError, ModelTurn, Usage
 
 
 class Agent:

@@ -20,4 +20,4 @@ COPY --from=web /web/dist /app/web
 ENV WEB_DIR=/app/web PATH="/app/backend/.venv/bin:$PATH"
 USER nobody
 # Cloud Run sets PORT; 8080 is its default.
-CMD ["sh", "-c", "exec uvicorn ga4_agent.bootstrap:build_app --factory --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "exec uvicorn analyst.bootstrap:build_app --factory --host 0.0.0.0 --port ${PORT:-8080}"]

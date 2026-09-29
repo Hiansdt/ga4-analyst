@@ -2,8 +2,8 @@
 
 from collections.abc import Iterator
 
-from ga4_agent.llm import ModelError, ModelTurn
-from ga4_agent.sql import Column, QueryError, QueryParams, QueryResult
+from analyst.ports.llm import ModelError, ModelTurn
+from analyst.ports.sql import Column, QueryError, QueryParams, QueryResult
 
 
 class FakeRunner:

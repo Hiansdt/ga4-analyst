@@ -7,8 +7,8 @@ import anthropic
 import httpx2
 import pytest
 
-from ga4_agent.adapters.anthropic import AnthropicModel
-from ga4_agent.llm import ModelError
+from analyst.adapters.anthropic import AnthropicModel
+from analyst.ports.llm import ModelError
 
 
 def failing_client(error: Exception) -> SimpleNamespace:

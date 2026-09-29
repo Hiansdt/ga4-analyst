@@ -4,22 +4,19 @@ import anthropic
 from fastapi import FastAPI
 from google.cloud import bigquery
 
-from ga4_agent.adapters.anthropic import AnthropicModel
-from ga4_agent.adapters.bigquery import BigQueryRunner
-from ga4_agent.agent import Agent
-from ga4_agent.api import create_app
-from ga4_agent.config import Settings
-from ga4_agent.datasets import ga4, ga4_metrics
-from ga4_agent.prompt import build_system_prompt
-from ga4_agent.ratelimit import RateLimiter
-from ga4_agent.store import InMemoryStore
-from ga4_agent.tools import (
-    ToolRegistry,
-    compiled_query_tool,
-    create_chart_tool,
-    run_sql_tool,
-    suggest_follow_ups_tool,
-)
+from analyst.adapters.anthropic import AnthropicModel
+from analyst.adapters.bigquery import BigQueryRunner
+from analyst.adapters.memory_store import InMemoryStore
+from analyst.api.app import create_app
+from analyst.api.ratelimit import RateLimiter
+from analyst.config import Settings
+from analyst.core.agent import Agent
+from analyst.core.prompt import build_system_prompt
+from analyst.core.registry import ToolRegistry
+from analyst.datasets import ga4, ga4_metrics
+from analyst.tools.charts import create_chart_tool
+from analyst.tools.follow_ups import suggest_follow_ups_tool
+from analyst.tools.queries import compiled_query_tool, run_sql_tool
 
 
 def build_agent(settings: Settings) -> Agent:
@@ -61,7 +58,7 @@ def build_agent(settings: Settings) -> Agent:
 
 
 def build_app() -> FastAPI:
-    """Uvicorn factory: uvicorn ga4_agent.bootstrap:build_app --factory"""
+    """Uvicorn factory: uvicorn analyst.bootstrap:build_app --factory"""
     settings = Settings()
     return create_app(
         build_agent(settings),

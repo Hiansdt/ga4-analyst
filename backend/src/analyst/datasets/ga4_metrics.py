@@ -11,7 +11,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from ga4_agent.datasets.ga4 import BUILDING_BLOCKS, DATASET_END, DATASET_START
+from analyst.datasets.ga4 import BUILDING_BLOCKS, DATASET_END, DATASET_START
 
 Metric = Literal[
     "revenue",

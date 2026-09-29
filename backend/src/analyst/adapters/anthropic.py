@@ -5,7 +5,7 @@ from collections.abc import Iterator
 
 import anthropic
 
-from ga4_agent.llm import ModelError, ModelTurn, Usage
+from analyst.ports.llm import ModelError, ModelTurn, Usage
 
 logger = logging.getLogger(__name__)
 

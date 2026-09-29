@@ -3,16 +3,10 @@ import json
 from fakes import FakeRunner, daily_result
 from pydantic import BaseModel, Field
 
-from ga4_agent.tools import (
-    Tool,
-    ToolOutput,
-    ToolRegistry,
-    TurnContext,
-    compiled_query_tool,
-    create_chart_tool,
-    run_sql_tool,
-    suggest_follow_ups_tool,
-)
+from analyst.core.registry import Tool, ToolOutput, ToolRegistry, TurnContext
+from analyst.tools.charts import create_chart_tool
+from analyst.tools.follow_ups import suggest_follow_ups_tool
+from analyst.tools.queries import compiled_query_tool, run_sql_tool
 
 
 class EchoInput(BaseModel):

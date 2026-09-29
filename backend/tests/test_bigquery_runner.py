@@ -4,9 +4,9 @@ from decimal import Decimal
 
 import pytest
 
-from ga4_agent.adapters.bigquery import BigQueryRunner, to_json_value
-from ga4_agent.datasets.ga4 import DATASET
-from ga4_agent.sql import Column, QueryError
+from analyst.adapters.bigquery import BigQueryRunner, to_json_value
+from analyst.datasets.ga4 import DATASET
+from analyst.ports.sql import Column, QueryError
 
 EVENTS = f"`{DATASET}.events_*`"
 

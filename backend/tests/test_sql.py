@@ -1,6 +1,7 @@
 import pytest
 
-from ga4_agent.sql import DryRun, QueryError, validate
+from analyst.core.sql_guard import validate
+from analyst.ports.sql import DryRun, QueryError
 
 DATASET = "bigquery-public-data.ga4_obfuscated_sample_ecommerce"
 EVENTS = f"{DATASET}.events_*"

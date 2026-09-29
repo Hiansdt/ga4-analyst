@@ -3,8 +3,8 @@ import datetime
 import pytest
 from pydantic import ValidationError
 
-from ga4_agent.datasets.ga4 import BUILDING_BLOCKS, DATASET_END, DATASET_START
-from ga4_agent.datasets.ga4_metrics import MetricsQuery, compile_query, describe
+from analyst.datasets.ga4 import BUILDING_BLOCKS, DATASET_END, DATASET_START
+from analyst.datasets.ga4_metrics import MetricsQuery, compile_query, describe
 
 
 def compiled(**fields) -> tuple[str, dict]:
@@ -111,8 +111,8 @@ def run():
 
     from google.cloud import bigquery
 
-    from ga4_agent.adapters.bigquery import BigQueryRunner
-    from ga4_agent.datasets.ga4 import DATASET
+    from analyst.adapters.bigquery import BigQueryRunner
+    from analyst.datasets.ga4 import DATASET
 
     runner = BigQueryRunner(
         bigquery.Client(project=os.environ["GCP_PROJECT_ID"]),

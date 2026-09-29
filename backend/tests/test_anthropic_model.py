@@ -6,10 +6,11 @@ import anthropic
 import pytest
 from fakes import FakeRunner, daily_result, tool_use
 
-from ga4_agent.adapters.anthropic import AnthropicModel
-from ga4_agent.agent import Agent
-from ga4_agent.events import TextDelta, ToolFinished, TurnCompleted
-from ga4_agent.tools import ToolRegistry, run_sql_tool
+from analyst.adapters.anthropic import AnthropicModel
+from analyst.core.agent import Agent
+from analyst.core.events import TextDelta, ToolFinished, TurnCompleted
+from analyst.core.registry import ToolRegistry
+from analyst.tools.queries import run_sql_tool
 
 pytestmark = pytest.mark.llm
 
