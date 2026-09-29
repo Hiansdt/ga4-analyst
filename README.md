@@ -93,7 +93,7 @@ api/        HTTP layer: endpoints, SSE, rate limit
 - **Single source of truth.** Chart data comes from query results, never from numbers the model writes. Metric definitions (deduplicated orders, sessions, channel) live in one set of SQL building blocks that every query reuses.
 - **Errors as data for the model, exceptions for the system.** Tool failures return to Claude so it can recover. Infrastructure failures surface to the user as an error event.
 - **Validation at the edges.** Pydantic validates HTTP input and tool input; the core works with typed data.
-- **Datasets are configuration.** Everything dataset-specific (tables, building blocks, metrics, dimensions, notes, example questions) is one YAML file in `datasets/`, validated when loaded. The loop, tools, semantic layer and prompt are dataset-agnostic, and `DATASET=<name>` picks the definition. The semantic layer's tests run on a made-up dataset, so nothing in it depends on GA4.
+- **Datasets are configuration.** Everything dataset-specific (tables, building blocks, metrics, dimensions, notes, example questions) is one YAML file in `datasets/`, validated when loaded. The loop, tools, semantic layer and prompt are dataset-agnostic, and `DATASETS` lists the definitions the app serves. The semantic layer's tests run on a made-up dataset, so nothing in it depends on GA4.
 - **Abstractions only where a second implementation exists.** Interfaces exist for the LLM, the SQL runner and the store because tests and planned persistence need them. Everything else is plain functions: no DI container, no class hierarchies.
 
 ## Testing
