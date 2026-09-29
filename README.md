@@ -55,7 +55,7 @@ deploy/cloudrun.sh
 ```
             ┌──────────────── agent core ────────────────┐
  FastAPI ──►│ agent loop                                 │──► LLM port    ◄── Anthropic adapter  | scripted fake (tests)
- CLI     ──►│ tool registry (run_sql, create_chart)      │──► SQL port    ◄── BigQuery adapter   | fake runner (tests)
+ CLI     ──►│ tool registry (query_metrics, run_sql...)  │──► SQL port    ◄── BigQuery adapter   | fake runner (tests)
             │ system prompt                              │──► Store port  ◄── in-memory store    | database store (future)
             └────────────────────────────────────────────┘
 ```
@@ -68,7 +68,8 @@ core/       the agent: loop, events, prompt, tool registry, SQL guard. No vendor
 ports/      interfaces the core depends on: LLM, SQL runner, conversation store
 adapters/   their implementations: Anthropic, BigQuery, in-memory store
 tools/      what the model can call: queries, charts, follow-up suggestions
-datasets/   knowledge about the GA4 dataset: building blocks, metric definitions
+semantic/   the semantic layer: dataset definition model, metric compiler, prompt context
+datasets/   one YAML definition per dataset (ga4.yaml): tables, building blocks, metrics, notes
 api/        HTTP layer: endpoints, SSE, rate limit
 ```
 
@@ -78,14 +79,14 @@ api/        HTTP layer: endpoints, SSE, rate limit
 
 ## Design principles
 
-- **One reason to change per module.** Metric definitions change only `datasets/ga4.py`, analyst behavior only `core/prompt.py`, SQL safety rules only `core/sql_guard.py`, the HTTP contract only `api/app.py`.
+- **One reason to change per module.** Metric definitions change only `datasets/ga4.yaml`, analyst behavior only `core/prompt.py`, SQL safety rules only `core/sql_guard.py`, the HTTP contract only `api/app.py`.
 - **Open for extension.** Tools are registered as `{name, input schema, handler}`; adding one does not change the loop.
 - **Functional core, imperative shell.** Decisions such as the SQL guard and the frontend event reducer are pure functions, unit tested without I/O.
 - **Defense in depth.** The service account can only run queries (no data access beyond the public dataset). Queries must dry-run as a single `SELECT` over the allowlisted dataset. Jobs run with `maximum_bytes_billed`, results are row-capped, the loop has a step limit, and the public endpoint is rate limited.
 - **Single source of truth.** Chart data comes from query results, never from numbers the model writes. Metric definitions (deduplicated orders, sessions, channel) live in one set of SQL building blocks that every query reuses.
 - **Errors as data for the model, exceptions for the system.** Tool failures return to Claude so it can recover. Infrastructure failures surface to the user as an error event.
 - **Validation at the edges.** Pydantic validates HTTP input and tool input; the core works with typed data.
-- **Dataset knowledge is separate from analyst behavior.** `prompt.py` is dataset-agnostic; everything GA4- or BigQuery-specific lives in `datasets/ga4.py` and the BigQuery adapter. There is no dataset interface yet: with one dataset it would be speculative.
+- **Datasets are configuration.** Everything dataset-specific (tables, building blocks, metrics, dimensions, notes, example questions) is one YAML file in `datasets/`, validated when loaded. The loop, tools, semantic layer and prompt are dataset-agnostic, and `DATASET=<name>` picks the definition. The semantic layer's tests run on a made-up dataset, so nothing in it depends on GA4.
 - **Abstractions only where a second implementation exists.** Interfaces exist for the LLM, the SQL runner and the store because tests and planned persistence need them. Everything else is plain functions: no DI container, no class hierarchies.
 
 ## Testing

@@ -13,16 +13,20 @@ from analyst.config import Settings
 from analyst.core.agent import Agent
 from analyst.core.prompt import build_system_prompt
 from analyst.core.registry import ToolRegistry
-from analyst.datasets import ga4, ga4_metrics
+from analyst.semantic.context import render_context
+from analyst.semantic.dataset import load_dataset
+from analyst.semantic.layer import SemanticLayer
 from analyst.tools.charts import create_chart_tool
 from analyst.tools.follow_ups import suggest_follow_ups_tool
 from analyst.tools.queries import compiled_query_tool, run_sql_tool
 
 
 def build_agent(settings: Settings) -> Agent:
+    dataset = load_dataset(settings.dataset)
+    layer = SemanticLayer(dataset)
     runner = BigQueryRunner(
         bigquery.Client(project=settings.gcp_project_id),
-        allowed_dataset=ga4.DATASET,
+        allowed_dataset=dataset.tables[0],
         max_bytes=settings.max_bytes_per_query,
         max_rows=settings.max_rows_per_result,
         timeout_s=settings.query_timeout_s,
@@ -36,10 +40,10 @@ def build_agent(settings: Settings) -> Agent:
     metrics = compiled_query_tool(
         runner,
         name="query_metrics",
-        description=ga4_metrics.DESCRIPTION,
-        input_model=ga4_metrics.MetricsQuery,
-        compile=ga4_metrics.compile_query,
-        label=ga4_metrics.describe,
+        description=layer.tool_description(),
+        input_model=layer.query_model,
+        compile=layer.compile,
+        label=layer.describe,
         preview_rows=settings.preview_rows,
     )
     return Agent(
@@ -52,7 +56,7 @@ def build_agent(settings: Settings) -> Agent:
                 suggest_follow_ups_tool(),
             ]
         ),
-        system_prompt=build_system_prompt(ga4.CONTEXT),
+        system_prompt=build_system_prompt(render_context(dataset)),
         max_steps=settings.max_agent_steps,
     )
 

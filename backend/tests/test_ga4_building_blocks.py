@@ -5,9 +5,12 @@ import os
 import pytest
 from google.cloud import bigquery
 
-from analyst.datasets.ga4 import BUILDING_BLOCKS
+from analyst.semantic.dataset import load_dataset
+from analyst.semantic.layer import SemanticLayer
 
 pytestmark = pytest.mark.bigquery
+
+WITH_BLOCKS = SemanticLayer(load_dataset("ga4")).with_clause()
 
 
 @pytest.fixture(scope="module")
@@ -16,13 +19,13 @@ def client() -> bigquery.Client:
 
 
 def query_one(client: bigquery.Client, select: str) -> dict:
-    sql = f"WITH {BUILDING_BLOCKS}\n{select}"
+    sql = f"{WITH_BLOCKS}\n{select}"
     job_config = bigquery.QueryJobConfig(maximum_bytes_billed=3 * 10**9)
     return dict(next(iter(client.query(sql, job_config=job_config).result())))
 
 
 def dry_run_bytes(client: bigquery.Client, select: str) -> int:
-    sql = f"WITH {BUILDING_BLOCKS}\n{select}"
+    sql = f"{WITH_BLOCKS}\n{select}"
     job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
     return client.query(sql, job_config=job_config).total_bytes_processed
 

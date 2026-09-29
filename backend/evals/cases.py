@@ -1,6 +1,6 @@
 """Eval questions with independently computed answers.
 
-Expected values come from queries over the verified building blocks (datasets/ga4.py), run
+Expected values come from queries over the verified building blocks (datasets/ga4.yaml), run
 outside the agent. Most answers are deliberately absent from the system prompt, so passing
 requires correct SQL, not recall of the reference totals.
 """

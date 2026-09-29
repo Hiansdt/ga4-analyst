@@ -5,9 +5,9 @@ from decimal import Decimal
 import pytest
 
 from analyst.adapters.bigquery import BigQueryRunner, to_json_value
-from analyst.datasets.ga4 import DATASET
 from analyst.ports.sql import Column, QueryError
 
+DATASET = "bigquery-public-data.ga4_obfuscated_sample_ecommerce"
 EVENTS = f"`{DATASET}.events_*`"
 
 

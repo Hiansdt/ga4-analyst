@@ -1,0 +1,222 @@
+# Google Analytics 4 export of the Google Merchandise Store (the dataset the task specifies).
+# Everything the analyst knows about this dataset lives here; the code is dataset-agnostic.
+
+name: Google Merchandise Store
+tables:
+  - bigquery-public-data.ga4_obfuscated_sample_ecommerce
+period:
+  start: 2020-11-01
+  end: 2021-01-31
+
+# TODO(prompt-tuning): Keep placeholder channels out of rankings and headlines, and explain self-referral traffic
+# WHY: Haiku led a channel answer with "(data deleted) converts best" and read shop.googlemerchandisestore.com as "internal promotion"
+# DONE-WHEN: an eval case "Which acquisition channel converts best?" passes on both models with a check that "(data deleted)" and "<Other>" are not the first channel named
+description: |
+  - The business is the Google Merchandise Store, an online shop that sells Google-branded merchandise. Its Google Analytics 4 (GA4) data lives in BigQuery; write BigQuery Standard SQL.
+  - One dataset: `bigquery-public-data.ga4_obfuscated_sample_ecommerce`, with one table per day (`events_YYYYMMDD`) from 2020-11-01 to 2021-01-31. Each row is one tracked event: a page view, a product view, an add to cart, a purchase, and so on.
+  - Treat 2021-01-31 as today. Resolve relative dates such as "last month" or "recently" against it, and say which dates you used. If a question is about a period outside the data, say that the data does not cover it instead of guessing.
+  - Google obfuscated part of this dataset for privacy. Values such as `<Other>`, `(data deleted)`, `(not set)` and empty strings are placeholders, not real categories. Leave them out of rankings unless asked, and mention them when they are a large share of the total.
+  - There is no cost, margin, stock or marketing spend data. Don't draw conclusions that need it.
+
+dimensions:
+  - name: device
+    description: "Device category: desktop, mobile or tablet."
+  - name: country
+    description: Country the visit came from.
+  - name: channel
+    description: "Acquisition medium, how the user first arrived: organic, cpc, referral, (none) for direct, affiliate."
+  - name: source
+    description: Acquisition source, e.g. google or (direct).
+  - name: product
+    description: Product name.
+  - name: category
+    description: Product category (naming is inconsistent, e.g. Apparel next to Home/Apparel/Men's/).
+
+blocks:
+  - name: events
+    description: |
+      one row per event. `event_params` and `items` are still nested arrays.
+    date_column: event_date
+    dimensions:
+      device: device_category
+      country: country
+      channel: acquisition_medium
+      source: acquisition_source
+    sql: |
+      SELECT
+        PARSE_DATE('%Y%m%d', event_date) AS event_date,
+        TIMESTAMP_MICROS(event_timestamp) AS event_ts,
+        event_name,
+        user_pseudo_id,
+        device.category AS device_category,
+        geo.country AS country,
+        traffic_source.source AS acquisition_source,
+        traffic_source.medium AS acquisition_medium,
+        NULLIF(ecommerce.transaction_id, '(not set)') AS transaction_id,
+        ecommerce.purchase_revenue AS purchase_revenue,
+        items,
+        event_params
+      FROM `bigquery-public-data.ga4_obfuscated_sample_ecommerce.events_*`
+      WHERE _TABLE_SUFFIX BETWEEN '20201101' AND '20210131'
+  - name: sessions
+    description: |
+      one row per visit (a session ends after 30 minutes of inactivity). `converted` is true when the visit included a purchase.
+    date_column: session_date
+    dimensions:
+      device: device_category
+      country: country
+      channel: acquisition_medium
+      source: acquisition_source
+    sql: |
+      SELECT
+        session_key,
+        ANY_VALUE(user_pseudo_id) AS user_pseudo_id,
+        MIN(event_date) AS session_date,
+        ANY_VALUE(device_category) AS device_category,
+        ANY_VALUE(country) AS country,
+        ANY_VALUE(acquisition_source) AS acquisition_source,
+        ANY_VALUE(acquisition_medium) AS acquisition_medium,
+        LOGICAL_OR(event_name = 'purchase') AS converted
+      FROM (
+        SELECT
+          *,
+          CONCAT(user_pseudo_id, '.', CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING)) AS session_key
+        FROM events
+      )
+      GROUP BY session_key
+  - name: orders
+    description: |
+      one row per order, with duplicate purchase events removed. `revenue` is the order total in USD.
+    date_column: order_date
+    dimensions:
+      device: device_category
+      country: country
+      channel: acquisition_medium
+      source: acquisition_source
+    sql: |
+      SELECT
+        COALESCE(transaction_id, CONCAT('untracked.', user_pseudo_id, '.', CAST(event_ts AS STRING))) AS order_id,
+        event_date AS order_date,
+        event_ts,
+        user_pseudo_id,
+        device_category,
+        country,
+        acquisition_source,
+        acquisition_medium,
+        purchase_revenue AS revenue,
+        items
+      FROM events
+      WHERE event_name = 'purchase'
+        AND (transaction_id IS NOT NULL OR purchase_revenue IS NOT NULL)
+      QUALIFY transaction_id IS NULL
+        OR ROW_NUMBER() OVER (PARTITION BY transaction_id ORDER BY event_ts) = 1
+  - name: order_items
+    description: |
+      one row per product line of an order.
+    date_column: order_date
+    dimensions:
+      product: item_name
+      category: item_category
+    sql: |
+      SELECT
+        o.order_id,
+        o.order_date,
+        i.item_name,
+        i.item_category,
+        i.quantity,
+        i.item_revenue
+      FROM orders AS o, UNNEST(o.items) AS i
+  - name: user_funnel
+    description: |
+      one row per user who reached the funnel, with one flag per step. Each flag requires every earlier step too (a closed funnel), so counts only shrink from step to step.
+    sql: |
+      SELECT
+        user_pseudo_id,
+        ANY_VALUE(device_category) AS device_category,
+        ANY_VALUE(country) AS country,
+        ANY_VALUE(acquisition_source) AS acquisition_source,
+        ANY_VALUE(acquisition_medium) AS acquisition_medium,
+        LOGICAL_OR(event_name = 'view_item') AS viewed_item,
+        LOGICAL_OR(event_name = 'view_item') AND LOGICAL_OR(event_name = 'add_to_cart') AS added_to_cart,
+        LOGICAL_OR(event_name = 'view_item') AND LOGICAL_OR(event_name = 'add_to_cart')
+          AND LOGICAL_OR(event_name = 'begin_checkout') AS began_checkout,
+        LOGICAL_OR(event_name = 'view_item') AND LOGICAL_OR(event_name = 'add_to_cart')
+          AND LOGICAL_OR(event_name = 'begin_checkout') AND LOGICAL_OR(event_name = 'purchase') AS purchased
+      FROM events
+      WHERE event_name IN ('view_item', 'add_to_cart', 'begin_checkout', 'purchase')
+      GROUP BY user_pseudo_id
+
+block_notes: |
+  Never filter dates inside `events`: orders are deduplicated over the full date range, and narrowing `events` would count an order logged on both sides of a date boundary in the wrong period.
+
+  Reading `event_params` (which `sessions` does) scans about 1 GB over the full date range; the other blocks scan a small fraction of that. Use `sessions` only when the question is about visits.
+
+metrics:
+  - name: revenue
+    block: orders
+    sql: ROUND(SUM(revenue), 2)
+    description: Revenue in USD, duplicate purchases removed.
+  - name: orders
+    block: orders
+    sql: COUNT(*)
+    description: Orders, duplicate purchases removed.
+  - name: buyers
+    block: orders
+    sql: COUNT(DISTINCT user_pseudo_id)
+    description: Users with at least one order.
+  - name: average_order_value
+    block: orders
+    sql: ROUND(SAFE_DIVIDE(SUM(revenue), COUNT(*)), 2)
+    description: Revenue divided by orders, in USD.
+  - name: sessions
+    block: sessions
+    sql: COUNT(*)
+    description: Visits.
+  - name: converted_sessions
+    block: sessions
+    sql: COUNTIF(converted)
+    description: Visits that included a purchase.
+  - name: conversion_rate_pct
+    block: sessions
+    sql: ROUND(100 * SAFE_DIVIDE(COUNTIF(converted), COUNT(*)), 3)
+    description: Converted sessions divided by sessions, already in percent.
+  - name: users
+    block: events
+    sql: COUNT(DISTINCT user_pseudo_id)
+    description: Distinct browsers or devices.
+  - name: product_revenue
+    block: order_items
+    sql: ROUND(SUM(item_revenue), 2)
+    description: Revenue per product line, in USD.
+  - name: units_sold
+    block: order_items
+    sql: SUM(quantity)
+    description: Units sold.
+
+reference_totals: |
+  Full-period values from the building blocks, for sanity checks: revenue $339,457, orders 4,907, buyers 4,055, users 270,154, sessions 360,129, converted sessions 4,848 (1.35% conversion rate). A total above these, or a share or rate above 100%, means the query is wrong.
+
+metric_notes: |
+  - Revenue is `SUM(revenue)` from `orders`. Never sum revenue from raw purchase events: some purchases were logged several times.
+  - Orders is `COUNT(*)` from `orders`. Average order value is revenue divided by orders.
+  - Users are distinct `user_pseudo_id` values. A user is a browser or device, not a person.
+  - Sessions are rows of `sessions`. Conversion rate is converted sessions divided by sessions, unless the user asks for it per user.
+  - Product revenue is `SUM(item_revenue)` from `order_items`. Never add order-level `revenue` after unnesting items: that counts the order once per item.
+  - Channel: only the first-visit acquisition channel is reliable (`acquisition_source`, `acquisition_medium`). Call it "acquisition channel (how the user first arrived)". Mediums: `organic` is unpaid search, `cpc` is paid ads, `referral` is a link on another site, `(none)` is direct traffic, plus `affiliate` and the placeholders above.
+  - Funnels come from `user_funnel`: `COUNTIF(viewed_item)`, `COUNTIF(added_to_cart)` and so on, with step rates computed in the same query. Tracking has gaps: about a third of buyers (1,504 of 4,419) have no logged product view, cart or checkout event, so the funnel's last step (2,915) is below the number of buyers. Say so when you present a funnel.
+  - To report metrics from different blocks together, such as sessions, conversion and revenue in one overview, compute each block as its own one-row aggregate and combine them. Never join `sessions` to `orders` on `user_pseudo_id`: every order would repeat once per visit.
+
+    ```sql
+    SELECT *
+    FROM (SELECT COUNT(*) AS sessions, COUNTIF(converted) AS converted_sessions FROM sessions)
+    CROSS JOIN (SELECT COUNT(*) AS orders, SUM(revenue) AS revenue FROM orders)
+    ```
+  - To compare channels, devices or countries fairly, divide by that segment's own traffic: aggregate `sessions` by segment for the denominator, aggregate `orders` by segment for the numerator, then join the two aggregated results on the segment.
+  - Product categories are inconsistent (`Apparel` next to `Home/Apparel/Men's/`). Mention it when you group by category.
+  - Other event parameters are read with `(SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'page_title')`. Some keys mix value types; when unsure use `COALESCE(value.string_value, CAST(value.int_value AS STRING), CAST(value.double_value AS STRING))`. Useful keys: `page_title`, `page_location`, `search_term`, `engagement_time_msec`, `percent_scrolled`.
+
+example_questions:
+  - How are we doing?
+  - Where do customers drop off before buying?
+  - Which acquisition channel brings in the most revenue?
+  - Show me daily revenue in December 2020.

@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     gcp_project_id: str
+    dataset: str = "ga4"  # a definition in datasets/, e.g. datasets/ga4.yaml
 
     anthropic_model: str = "claude-sonnet-5"
     anthropic_effort: str | None = None
