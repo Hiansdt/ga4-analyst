@@ -5,7 +5,7 @@
 secrets/
 
 # Local agent instructions
-CLAUDE.local.md
+*.local.md
 
 # Python
 __pycache__/
