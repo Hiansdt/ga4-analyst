@@ -36,3 +36,4 @@ backend/evals/results/
 
 # Impeccable design-review snapshots
 .impeccable/
+.~lock.*
