@@ -18,6 +18,9 @@ class SuggestFollowUpsInput(BaseModel):
     )
 
 
+# TODO(prompt-tuning): Make the model offer follow-ups on every answer, through the tool only
+# WHY: in the TheLook eval Sonnet skipped the tool on 3 of 8 answers and once wrote "Let me know if..." in prose instead
+# DONE-WHEN: python -m evals.run --model claude-sonnet-5 --dataset thelook (and ga4) shows follow "yes" for every case except outside_date_range
 def suggest_follow_ups_tool() -> Tool:
     def handler(args: SuggestFollowUpsInput, ctx: TurnContext) -> ToolOutput:
         return ToolOutput(content="Suggestions shown to the user.", display={"questions": args.questions})
