@@ -4,6 +4,7 @@ from fakes import FakeRunner, daily_result
 from pydantic import BaseModel, Field
 
 from analyst.core.registry import Tool, ToolOutput, ToolRegistry, TurnContext
+from analyst.ports.sql import Column, QueryResult
 from analyst.tools.charts import create_chart_tool
 from analyst.tools.follow_ups import suggest_follow_ups_tool
 from analyst.tools.queries import compiled_query_tool, run_sql_tool
@@ -228,3 +229,19 @@ def test_follow_up_suggestions_are_few_and_short():
 
     assert registry.run("suggest_follow_ups", {"questions": ["Only one"]}, TurnContext()).is_error
     assert registry.run("suggest_follow_ups", {"questions": ["x" * 101, "Short"]}, TurnContext()).is_error
+
+
+def test_chart_refuses_a_result_cut_off_at_the_row_cap():
+    ctx = TurnContext()
+    rows = [{"day": f"day {n}", "revenue": n} for n in range(1000)]
+    result_id = ctx.store(
+        QueryResult([Column("day", "STRING"), Column("revenue", "INTEGER")], rows, total_rows=2827, bytes_processed=1)
+    )
+
+    output = ToolRegistry([create_chart_tool()]).run(
+        "create_chart", {"result_id": result_id, "type": "line", "title": "Daily", "x": "day", "y": ["revenue"]}, ctx
+    )
+
+    assert output.is_error
+    assert "1,000 of 2,827" in output.content
+    assert "week or month" in output.content

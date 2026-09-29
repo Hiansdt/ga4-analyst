@@ -27,7 +27,7 @@ class Usage:
 
 @dataclass(frozen=True)
 class ModelTurn:
-    content: list[dict]  # assistant content blocks, JSON-safe
+    content: list[dict]
     stop_reason: str
     usage: Usage = field(default_factory=Usage)
 

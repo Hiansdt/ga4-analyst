@@ -27,14 +27,18 @@ class CreateChartInput(BaseModel):
         return self
 
 
-# TODO(chart-truncation): Reject charts of results cut off at the row cap and ask for a coarser breakdown
-# WHY: only the first max_rows_per_result rows are kept, so daily revenue since 2019 on TheLook (about 2,800 days) would be charted as its first 1,000 days without warning
-# DONE-WHEN: a test charting a result with total_rows 2,827 and 1,000 stored rows gets an error mentioning "week or month", and a full result still charts
 def create_chart_tool() -> Tool:
     def handler(args: CreateChartInput, ctx: TurnContext) -> ToolOutput:
         result = ctx.results.get(args.result_id)
         if result is None:
             return tool_error(f"Unknown result_id {args.result_id!r}; available: {', '.join(ctx.results) or 'none'}.")
+        if result.total_rows > len(result.rows):
+            # Only the first rows are kept (the row cap), so a chart of them would silently miss the rest.
+            return tool_error(
+                f"This result was cut off at {len(result.rows):,} of {result.total_rows:,} rows, so a chart would be "
+                "incomplete. Query again with fewer rows, e.g. by week or month instead of day, or only the top "
+                "segments, then chart that result."
+            )
 
         types = {c.name: c.type for c in result.columns}
         missing = [name for name in [args.x, *args.y] if name not in types]
