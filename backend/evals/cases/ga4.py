@@ -1,14 +1,12 @@
-"""Eval questions with independently computed answers.
+"""GA4 eval questions with independently computed answers.
 
 Expected values come from queries over the verified building blocks (datasets/ga4.yaml), run
 outside the agent. Most answers are deliberately absent from the system prompt, so passing
 requires correct SQL, not recall of the reference totals.
 """
 
-from dataclasses import dataclass
-
+from evals.cases import Case
 from evals.checks import (
-    Check,
     amounts_at_most,
     mentions,
     mentions_amount,
@@ -17,14 +15,6 @@ from evals.checks import (
 )
 
 FULL_PERIOD_REVENUE = 339457
-
-
-@dataclass(frozen=True)
-class Case:
-    id: str
-    question: str
-    checks: tuple[Check, ...]
-    chart: tuple[str, int] | None = None  # expected (chart type, number of points)
 
 
 CASES = (

@@ -33,6 +33,13 @@ cd backend && uv run --env-file ../.env uvicorn analyst.bootstrap:build_app --fa
 cd web && npm install && npm run dev      # API_URL=http://localhost:<port> if the API is not on 8000
 ```
 
+Two datasets are defined in `backend/src/analyst/datasets/`; `DATASET` picks one (default `ga4`):
+
+- `ga4`: the GA4 export of the Google Merchandise Store, the dataset the task specifies.
+- `thelook`: TheLook, a synthetic clothing store with orders, products, customers and web events in plain tables. Google regenerates the public copy daily, so the definition reads a snapshot in the project's own `thelook_snapshot` dataset, which keeps its verified totals stable. The runtime service account needs BigQuery Data Viewer on that dataset.
+
+Adding a dataset means a YAML definition, a test that checks its totals against independent queries, and eval cases (`evals/cases/`); no code changes.
+
 A terminal client is also available: `cd backend && uv run --env-file ../.env analyst`.
 
 ## Deploying
@@ -97,6 +104,6 @@ api/        HTTP layer: endpoints, SSE, rate limit
 
   ```
   cd backend
-  uv run --env-file ../.env python -m evals.run --model claude-haiku-4-5 --model claude-sonnet-5
+  uv run --env-file ../.env python -m evals.run --model claude-haiku-4-5 --model claude-sonnet-5 [--dataset thelook]
   ```
 - **Integration tests** (opt-in): `pytest -m bigquery` checks the SQL building blocks against verified totals and the BigQuery adapter; `pytest -m llm` round-trips a tool conversation through the real API.

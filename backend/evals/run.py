@@ -19,7 +19,7 @@ from analyst.core.agent import Agent
 from analyst.core.events import TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
 from analyst.ports.llm import Usage
 from analyst.semantic.dataset import load_dataset
-from evals.cases import CASES, Case
+from evals.cases import Case, cases_for
 
 RESULTS_DIR = Path(__file__).parent / "results"
 
@@ -111,22 +111,23 @@ def print_scorecard(outcomes: list[Outcome]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--model", action="append", help="repeatable; default claude-haiku-4-5")
+    parser.add_argument("--dataset", default="ga4", help="a definition in datasets/; default ga4")
     parser.add_argument("--case", action="append", help="repeatable; default all cases")
     parser.add_argument("--workers", type=int, default=4)
     args = parser.parse_args()
 
     models = args.model or ["claude-haiku-4-5"]
-    cases = [c for c in CASES if not args.case or c.id in args.case]
+    cases = [c for c in cases_for(args.dataset) if not args.case or c.id in args.case]
     outcomes: list[Outcome] = []
     for model in models:
-        settings = Settings(anthropic_model=model)
+        settings = Settings(anthropic_model=model, dataset=args.dataset)
         agent = build_agent(settings, load_dataset(settings.dataset))
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
             outcomes += pool.map(lambda case, a=agent, m=model: run_case(a, m, case), cases)
 
     print_scorecard(outcomes)
     RESULTS_DIR.mkdir(exist_ok=True)
-    path = RESULTS_DIR / f"{datetime.now(UTC):%Y%m%d-%H%M%S}.json"
+    path = RESULTS_DIR / f"{datetime.now(UTC):%Y%m%d-%H%M%S}-{args.dataset}.json"
     path.write_text(json.dumps([asdict(o) for o in outcomes], indent=2))
     print(f"\nFull answers: {path}")
 
