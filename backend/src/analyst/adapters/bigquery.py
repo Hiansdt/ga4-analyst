@@ -16,20 +16,20 @@ class BigQueryRunner:
         self,
         client: bigquery.Client,
         *,
-        allowed_dataset: str,
+        allowed_datasets: list[str],
         max_bytes: int,
         max_rows: int,
         timeout_s: float,
     ) -> None:
         self._client = client
-        self._allowed_dataset = allowed_dataset
+        self._allowed_datasets = allowed_datasets
         self._max_bytes = max_bytes
         self._max_rows = max_rows
         self._timeout_s = timeout_s
 
     def run(self, sql: str, params: QueryParams | None = None) -> QueryResult:
         parameters = [_parameter(name, value) for name, value in (params or {}).items()]
-        validate(self._dry_run(sql, parameters), allowed_dataset=self._allowed_dataset, max_bytes=self._max_bytes)
+        validate(self._dry_run(sql, parameters), allowed_datasets=self._allowed_datasets, max_bytes=self._max_bytes)
 
         # The guard already checked the estimate; maximum_bytes_billed enforces it on the real job.
         job_config = bigquery.QueryJobConfig(

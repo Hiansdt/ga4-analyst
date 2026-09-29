@@ -32,7 +32,7 @@ def run():
 
     runner = BigQueryRunner(
         bigquery.Client(project=os.environ["GCP_PROJECT_ID"]),
-        allowed_dataset=GA4.tables[0],
+        allowed_datasets=GA4.tables,
         max_bytes=5 * 10**9,
         max_rows=1000,
         timeout_s=60,

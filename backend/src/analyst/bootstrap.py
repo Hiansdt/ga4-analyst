@@ -14,19 +14,18 @@ from analyst.core.agent import Agent
 from analyst.core.prompt import build_system_prompt
 from analyst.core.registry import ToolRegistry
 from analyst.semantic.context import render_context
-from analyst.semantic.dataset import load_dataset
+from analyst.semantic.dataset import Dataset, load_dataset
 from analyst.semantic.layer import SemanticLayer
 from analyst.tools.charts import create_chart_tool
 from analyst.tools.follow_ups import suggest_follow_ups_tool
 from analyst.tools.queries import compiled_query_tool, run_sql_tool
 
 
-def build_agent(settings: Settings) -> Agent:
-    dataset = load_dataset(settings.dataset)
+def build_agent(settings: Settings, dataset: Dataset) -> Agent:
     layer = SemanticLayer(dataset)
     runner = BigQueryRunner(
         bigquery.Client(project=settings.gcp_project_id),
-        allowed_dataset=dataset.tables[0],
+        allowed_datasets=dataset.tables,
         max_bytes=settings.max_bytes_per_query,
         max_rows=settings.max_rows_per_result,
         timeout_s=settings.query_timeout_s,
@@ -64,11 +63,18 @@ def build_agent(settings: Settings) -> Agent:
 def build_app() -> FastAPI:
     """Uvicorn factory: uvicorn analyst.bootstrap:build_app --factory"""
     settings = Settings()
+    dataset = load_dataset(settings.dataset)
     return create_app(
-        build_agent(settings),
+        build_agent(settings, dataset),
         InMemoryStore(),
         limiter=RateLimiter(limit=settings.questions_per_minute, window_s=60),
         max_question_chars=settings.max_question_chars,
         max_turns=settings.max_turns_per_conversation,
+        dataset={
+            "name": dataset.name,
+            "start": dataset.period.start.isoformat(),
+            "end": dataset.period.end.isoformat(),
+            "example_questions": dataset.example_questions,
+        },
         web_dir=settings.web_dir,
     )

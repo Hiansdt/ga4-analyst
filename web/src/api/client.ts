@@ -1,10 +1,14 @@
 import { SseParser } from './sse'
-import type { AgentEvent, StoredTurn } from './types'
+import type { AgentEvent, DatasetInfo, StoredTurn } from './types'
 
 export class ConversationGone extends Error {}
 
 // Error messages are shown to business users as is, so they carry no status codes.
 const UNAVAILABLE = 'The analyst is unavailable right now. Please try again in a minute.'
+
+export async function loadDataset(): Promise<DatasetInfo> {
+  return (await request('/api/dataset')).json()
+}
 
 export async function createConversation(): Promise<string> {
   const response = await request('/api/conversations', { method: 'POST' })

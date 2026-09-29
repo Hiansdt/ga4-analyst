@@ -3,12 +3,14 @@
 from analyst.bootstrap import build_agent
 from analyst.config import Settings
 from analyst.core.events import Event, TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
+from analyst.semantic.dataset import load_dataset
 
 DIM, RED, RESET = "\033[2m", "\033[31m", "\033[0m"
 
 
 def main() -> None:
-    agent = build_agent(Settings())
+    settings = Settings()
+    agent = build_agent(settings, load_dataset(settings.dataset))
     history: list[dict] = []
     print("Ask about the Google Merchandise Store (Nov 2020 to Jan 2021). Ctrl+D to quit.")
     while True:

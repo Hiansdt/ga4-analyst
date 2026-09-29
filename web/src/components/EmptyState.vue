@@ -1,23 +1,29 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import type { DatasetInfo } from '../api/types'
+
+// null until GET /api/dataset answers; the page still invites a question meanwhile.
+const props = defineProps<{ dataset: DatasetInfo | null }>()
 defineEmits<{ ask: [question: string] }>()
 
-const SUGGESTIONS = [
-  'How are we doing?',
-  'Where do customers drop off before buying?',
-  'Which acquisition channel brings in the most revenue?',
-  'Show me daily revenue in December 2020.',
-]
+const kicker = computed(() =>
+  props.dataset ? `${props.dataset.name}, ${monthYear(props.dataset.start)} to ${monthYear(props.dataset.end)}` : '',
+)
+
+function monthYear(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+}
 </script>
 
 <template>
   <section class="empty">
-    <p class="kicker">Google Merchandise Store, Nov 2020 to Jan 2021</p>
-    <h1>Ask the store's data a question.</h1>
+    <p v-if="kicker" class="kicker">{{ kicker }}</p>
+    <h1>Ask your data a question.</h1>
     <p class="lede">
       Answers come with the numbers behind them, charts where they help, and the exact queries that produced them.
     </p>
     <ul>
-      <li v-for="question in SUGGESTIONS" :key="question">
+      <li v-for="question in dataset?.example_questions ?? []" :key="question">
         <button type="button" @click="$emit('ask', question)">{{ question }}</button>
       </li>
     </ul>

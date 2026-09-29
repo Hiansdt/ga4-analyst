@@ -32,6 +32,7 @@ def make_client(
         limiter=RateLimiter(limit=questions_per_minute, window_s=60),
         max_question_chars=max_question_chars,
         max_turns=max_turns,
+        dataset={"name": "Test Shop", "start": "2024-01-01", "end": "2024-03-31", "example_questions": ["Revenue?"]},
     )
     return TestClient(app), model
 
@@ -146,3 +147,14 @@ def test_a_full_conversation_asks_for_a_new_one():
 
     assert response.status_code == 409
     assert "new chat" in response.json()["detail"]
+
+
+def test_the_ui_can_ask_which_dataset_it_is_talking_to():
+    client, _ = make_client()
+
+    assert client.get("/api/dataset").json() == {
+        "name": "Test Shop",
+        "start": "2024-01-01",
+        "end": "2024-03-31",
+        "example_questions": ["Revenue?"],
+    }

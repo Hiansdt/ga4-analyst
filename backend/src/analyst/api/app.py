@@ -36,9 +36,15 @@ def create_app(
     limiter: RateLimiter,
     max_question_chars: int,
     max_turns: int,
+    dataset: dict,
     web_dir: Path | None = None,
 ) -> FastAPI:
-    app = FastAPI(title="GA4 Analyst")
+    """dataset: what the UI shows about the data (name, period, example questions)."""
+    app = FastAPI(title="Analyst")
+
+    @app.get("/api/dataset")
+    def get_dataset() -> dict:
+        return dataset
 
     @app.post("/api/conversations", status_code=201)
     def create_conversation() -> dict:

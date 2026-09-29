@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { nextTick, onMounted, useTemplateRef, watch } from 'vue'
+import { nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { loadDataset } from './api/client'
+import type { DatasetInfo } from './api/types'
 import { useChat } from './chat/useChat'
 import ChatComposer from './components/ChatComposer.vue'
 import EmptyState from './components/EmptyState.vue'
@@ -8,7 +10,17 @@ import TurnView from './components/TurnView.vue'
 const { turns, busy, notice, restore, ask, newChat } = useChat()
 const end = useTemplateRef<HTMLDivElement>('end')
 
-onMounted(restore)
+const dataset = ref<DatasetInfo | null>(null)
+
+onMounted(async () => {
+  restore()
+  try {
+    dataset.value = await loadDataset()
+    document.title = `${dataset.value.name} · Analyst`
+  } catch {
+    // The page works without it; only the dataset name and example questions are missing.
+  }
+})
 
 // TODO(ui-harden): Auto-scroll only when the reader is already near the bottom
 // WHY: scrolling up to read SQL mid-answer gets pulled back down on every text delta
@@ -30,14 +42,15 @@ watch(
   <header class="masthead">
     <div class="brand">
       <span class="mark" aria-hidden="true" />
-      GA4 Analyst
+      Analyst
+      <span v-if="dataset" class="dataset">{{ dataset.name }}</span>
     </div>
     <button v-if="turns.length" type="button" class="new-chat" :disabled="busy" @click="newChat">New chat</button>
   </header>
 
   <main class="page">
     <p v-if="notice" class="notice" role="status">{{ notice }}</p>
-    <EmptyState v-if="!turns.length" @ask="ask" />
+    <EmptyState v-if="!turns.length" :dataset="dataset" @ask="ask" />
     <section v-else class="log" role="log" aria-live="polite">
       <TurnView
         v-for="(turn, index) in turns"
@@ -79,6 +92,13 @@ watch(
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.01em;
+}
+
+.dataset {
+  font-weight: 500;
+  color: var(--ink-muted);
+  padding-left: 0.55rem;
+  border-left: 1px solid var(--rule-strong);
 }
 
 .mark {

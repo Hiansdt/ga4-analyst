@@ -33,7 +33,7 @@ def runner() -> BigQueryRunner:
 
     return BigQueryRunner(
         bigquery.Client(project=os.environ["GCP_PROJECT_ID"]),
-        allowed_dataset=DATASET,
+        allowed_datasets=[DATASET],
         max_bytes=5 * 10**9,
         max_rows=10,
         timeout_s=60,

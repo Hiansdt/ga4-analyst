@@ -18,6 +18,7 @@ from analyst.config import Settings
 from analyst.core.agent import Agent
 from analyst.core.events import TextDelta, ToolFinished, ToolStarted, TurnCompleted, TurnFailed
 from analyst.ports.llm import Usage
+from analyst.semantic.dataset import load_dataset
 from evals.cases import CASES, Case
 
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -118,7 +119,8 @@ def main() -> None:
     cases = [c for c in CASES if not args.case or c.id in args.case]
     outcomes: list[Outcome] = []
     for model in models:
-        agent = build_agent(Settings(anthropic_model=model))
+        settings = Settings(anthropic_model=model)
+        agent = build_agent(settings, load_dataset(settings.dataset))
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
             outcomes += pool.map(lambda case, a=agent, m=model: run_case(a, m, case), cases)
 

@@ -25,6 +25,14 @@ export interface QueryDisplay {
   error?: string
 }
 
+// What the UI shows about the dataset the analyst is connected to (GET /api/dataset).
+export interface DatasetInfo {
+  name: string
+  start: string
+  end: string
+  example_questions: string[]
+}
+
 export interface FollowUpsDisplay {
   questions: string[]
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { askQuestion, ConversationGone, createConversation, loadConversation } from './client'
+import { askQuestion, ConversationGone, createConversation, loadConversation, loadDataset } from './client'
 
 const UNAVAILABLE = 'The analyst is unavailable right now. Please try again in a minute.'
 
@@ -37,5 +37,11 @@ describe('client errors', () => {
     respondWith(404)
 
     await expect(askQuestion('abc', 'Q', () => {})).rejects.toBeInstanceOf(ConversationGone)
+  })
+  it('loads what the UI shows about the dataset', async () => {
+    const dataset = { name: 'Shop', start: '2024-01-01', end: '2024-03-31', example_questions: ['Revenue?'] }
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(dataset)))
+
+    await expect(loadDataset()).resolves.toEqual(dataset)
   })
 })
