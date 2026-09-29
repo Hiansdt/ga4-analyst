@@ -25,35 +25,41 @@ EVENT_TYPES = {
 }
 
 
+class ConversationIn(BaseModel):
+    dataset: str
+
+
 class MessageIn(BaseModel):
     content: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
 def create_app(
-    agent: Agent,
+    agents: dict[str, Agent],
     store: ConversationStore,
     *,
+    datasets: list[dict],
     limiter: RateLimiter,
     max_question_chars: int,
     max_turns: int,
-    dataset: dict,
     web_dir: Path | None = None,
 ) -> FastAPI:
-    """dataset: what the UI shows about the data (name, period, example questions)."""
+    """agents: one per dataset id. datasets: what the UI shows about each (id, name, period, example questions)."""
     app = FastAPI(title="Analyst")
 
-    @app.get("/api/dataset")
-    def get_dataset() -> dict:
-        return dataset
+    @app.get("/api/datasets")
+    def list_datasets() -> list[dict]:
+        return datasets
 
     @app.post("/api/conversations", status_code=201)
-    def create_conversation() -> dict:
-        return {"id": store.create()}
+    def create_conversation(body: ConversationIn) -> dict:
+        if body.dataset not in agents:
+            raise HTTPException(422, f"Unknown dataset {body.dataset!r}; available: {', '.join(agents)}.")
+        return {"id": store.create(body.dataset)}
 
     @app.get("/api/conversations/{conversation_id}")
     def get_conversation(conversation_id: str) -> dict:
         conversation = _get(store, conversation_id)
-        return {"id": conversation.id, "turns": conversation.turns}
+        return {"id": conversation.id, "dataset": conversation.dataset, "turns": conversation.turns}
 
     @app.post("/api/conversations/{conversation_id}/messages")
     def post_message(conversation_id: str, message: MessageIn, request: Request) -> StreamingResponse:
@@ -70,7 +76,7 @@ def create_app(
                 409, "This chat has reached its length limit. Start a new chat to keep asking questions."
             )
         return StreamingResponse(
-            _answer(agent, store, conversation, message.content),
+            _answer(agents[conversation.dataset], store, conversation, message.content),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )

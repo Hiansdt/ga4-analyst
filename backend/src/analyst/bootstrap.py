@@ -22,16 +22,22 @@ from analyst.tools.queries import compiled_query_tool, run_sql_tool
 
 
 def build_agent(settings: Settings, dataset: Dataset) -> Agent:
+    """One agent for one dataset, e.g. for the terminal client and the eval."""
+    return _agent(settings, dataset, bigquery.Client(project=settings.gcp_project_id), anthropic.Anthropic())
+
+
+def _agent(settings: Settings, dataset: Dataset, bq: bigquery.Client, llm: anthropic.Anthropic) -> Agent:
     layer = SemanticLayer(dataset)
+    # Each dataset gets its own runner, so its queries can only read its own tables.
     runner = BigQueryRunner(
-        bigquery.Client(project=settings.gcp_project_id),
+        bq,
         allowed_datasets=dataset.tables,
         max_bytes=settings.max_bytes_per_query,
         max_rows=settings.max_rows_per_result,
         timeout_s=settings.query_timeout_s,
     )
     model = AnthropicModel(
-        anthropic.Anthropic(),
+        llm,
         model=settings.anthropic_model,
         max_tokens=settings.anthropic_max_tokens,
         effort=settings.anthropic_effort,
@@ -63,18 +69,23 @@ def build_agent(settings: Settings, dataset: Dataset) -> Agent:
 def build_app() -> FastAPI:
     """Uvicorn factory: uvicorn analyst.bootstrap:build_app --factory"""
     settings = Settings()
-    dataset = load_dataset(settings.dataset)
+    datasets = {name: load_dataset(name) for name in settings.dataset_names()}
+    bq, llm = bigquery.Client(project=settings.gcp_project_id), anthropic.Anthropic()
     return create_app(
-        build_agent(settings, dataset),
+        {name: _agent(settings, dataset, bq, llm) for name, dataset in datasets.items()},
         InMemoryStore(),
+        datasets=[
+            {
+                "id": name,
+                "name": dataset.name,
+                "start": dataset.period.start.isoformat(),
+                "end": dataset.period.end.isoformat(),
+                "example_questions": dataset.example_questions,
+            }
+            for name, dataset in datasets.items()
+        ],
         limiter=RateLimiter(limit=settings.questions_per_minute, window_s=60),
         max_question_chars=settings.max_question_chars,
         max_turns=settings.max_turns_per_conversation,
-        dataset={
-            "name": dataset.name,
-            "start": dataset.period.start.isoformat(),
-            "end": dataset.period.end.isoformat(),
-            "example_questions": dataset.example_questions,
-        },
         web_dir=settings.web_dir,
     )

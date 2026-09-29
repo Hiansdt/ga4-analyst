@@ -15,10 +15,10 @@ class InMemoryStore:
         self._conversations: dict[str, Conversation] = {}
         self._lock = threading.Lock()
 
-    def create(self) -> str:
+    def create(self, dataset: str) -> str:
         conversation_id = uuid.uuid4().hex
         with self._lock:
-            self._conversations[conversation_id] = Conversation(conversation_id)
+            self._conversations[conversation_id] = Conversation(conversation_id, dataset)
         return conversation_id
 
     def get(self, conversation_id: str) -> Conversation:

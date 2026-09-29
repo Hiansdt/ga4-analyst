@@ -1,4 +1,6 @@
-"""Terminal chat with the agent. Run: uv run --env-file ../.env analyst"""
+"""Terminal chat with the agent. Run: uv run --env-file ../.env analyst [dataset]"""
+
+import sys
 
 from analyst.bootstrap import build_agent
 from analyst.config import Settings
@@ -10,9 +12,10 @@ DIM, RED, RESET = "\033[2m", "\033[31m", "\033[0m"
 
 def main() -> None:
     settings = Settings()
-    agent = build_agent(settings, load_dataset(settings.dataset))
+    dataset = load_dataset(sys.argv[1] if len(sys.argv) > 1 else settings.dataset_names()[0])
+    agent = build_agent(settings, dataset)
     history: list[dict] = []
-    print("Ask about the Google Merchandise Store (Nov 2020 to Jan 2021). Ctrl+D to quit.")
+    print(f"Ask about {dataset.name} ({dataset.period.start} to {dataset.period.end}). Ctrl+D to quit.")
     while True:
         try:
             question = input("\nyou> ").strip()

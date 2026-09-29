@@ -33,10 +33,10 @@ cd backend && uv run --env-file ../.env uvicorn analyst.bootstrap:build_app --fa
 cd web && npm install && npm run dev      # API_URL=http://localhost:<port> if the API is not on 8000
 ```
 
-Two datasets are defined in `backend/src/analyst/datasets/`; `DATASET` picks one (default `ga4`):
+Two datasets are defined in `backend/src/analyst/datasets/`, and the app serves both (`DATASETS=ga4,thelook`, the first is the default). The UI switches between them; each chat belongs to one dataset, and `?dataset=thelook` opens a link on that one:
 
 - `ga4`: the GA4 export of the Google Merchandise Store, the dataset the task specifies.
-- `thelook`: TheLook, a synthetic clothing store with orders, products, customers and web events in plain tables. Google regenerates the public copy daily, so the definition reads a snapshot in the project's own `thelook_snapshot` dataset, which keeps its verified totals stable. The runtime service account needs BigQuery Data Viewer on that dataset.
+- `thelook`: TheLook, a synthetic clothing store with orders, products, customers and web events in plain tables. Google regenerates the public copy daily, so the definition reads a snapshot in the project's own `thelook_snapshot` dataset, which keeps its verified totals stable. The runtime service account needs BigQuery Data Viewer on that dataset, and a fork needs its own snapshot: the definition names this project's copy.
 
 Adding a dataset means a YAML definition, a test that checks its totals against independent queries, and eval cases (`evals/cases/`); no code changes.
 

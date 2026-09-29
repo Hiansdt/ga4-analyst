@@ -120,8 +120,7 @@ def main() -> None:
     cases = [c for c in cases_for(args.dataset) if not args.case or c.id in args.case]
     outcomes: list[Outcome] = []
     for model in models:
-        settings = Settings(anthropic_model=model, dataset=args.dataset)
-        agent = build_agent(settings, load_dataset(settings.dataset))
+        agent = build_agent(Settings(anthropic_model=model), load_dataset(args.dataset))
         with ThreadPoolExecutor(max_workers=args.workers) as pool:
             outcomes += pool.map(lambda case, a=agent, m=model: run_case(a, m, case), cases)
 

@@ -25,8 +25,9 @@ export interface QueryDisplay {
   error?: string
 }
 
-// What the UI shows about the dataset the analyst is connected to (GET /api/dataset).
+// A dataset the analyst can answer about (GET /api/datasets). Each chat belongs to one.
 export interface DatasetInfo {
+  id: string
   name: string
   start: string
   end: string

@@ -7,15 +7,16 @@ from analyst.ports.store import ConversationNotFound
 def test_new_conversations_start_empty():
     store = InMemoryStore()
 
-    conversation = store.get(store.create())
+    conversation = store.get(store.create("shop"))
 
+    assert conversation.dataset == "shop"
     assert conversation.messages == []
     assert conversation.turns == []
 
 
 def test_appending_a_turn_extends_history_and_turns():
     store = InMemoryStore()
-    conversation_id = store.create()
+    conversation_id = store.create("shop")
     messages = [
         {"role": "user", "content": "Hi"},
         {"role": "assistant", "content": [{"type": "text", "text": "Hello"}]},
@@ -30,7 +31,7 @@ def test_appending_a_turn_extends_history_and_turns():
 
 def test_get_returns_a_snapshot_the_caller_cannot_mutate():
     store = InMemoryStore()
-    conversation_id = store.create()
+    conversation_id = store.create("shop")
 
     store.get(conversation_id).messages.append({"role": "user", "content": "sneaky"})
 

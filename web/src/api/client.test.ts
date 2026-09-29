@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { askQuestion, ConversationGone, createConversation, loadConversation, loadDataset } from './client'
+import { askQuestion, ConversationGone, createConversation, loadConversation, loadDatasets } from './client'
 
 const UNAVAILABLE = 'The analyst is unavailable right now. Please try again in a minute.'
 
@@ -16,7 +16,7 @@ describe('client errors', () => {
     respondWith(500)
 
     await expect(askQuestion('abc', 'Q', () => {})).rejects.toThrow(UNAVAILABLE)
-    await expect(createConversation()).rejects.toThrow(UNAVAILABLE)
+    await expect(createConversation('ga4')).rejects.toThrow(UNAVAILABLE)
     await expect(loadConversation('abc')).rejects.toThrow(UNAVAILABLE)
   })
 
@@ -38,10 +38,18 @@ describe('client errors', () => {
 
     await expect(askQuestion('abc', 'Q', () => {})).rejects.toBeInstanceOf(ConversationGone)
   })
-  it('loads what the UI shows about the dataset', async () => {
-    const dataset = { name: 'Shop', start: '2024-01-01', end: '2024-03-31', example_questions: ['Revenue?'] }
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json(dataset)))
+  it('lists the datasets the analyst can answer about', async () => {
+    const datasets = [{ id: 'shop', name: 'Shop', start: '2024-01-01', end: '2024-03-31', example_questions: [] }]
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(datasets)))
 
-    await expect(loadDataset()).resolves.toEqual(dataset)
+    await expect(loadDatasets()).resolves.toEqual(datasets)
+  })
+
+  it('starts a conversation about one dataset', async () => {
+    const fetch = vi.fn(async () => Response.json({ id: 'abc' }, { status: 201 }))
+    vi.stubGlobal('fetch', fetch)
+
+    await expect(createConversation('thelook')).resolves.toBe('abc')
+    expect(fetch).toHaveBeenCalledWith('/api/conversations', expect.objectContaining({ body: '{"dataset":"thelook"}' }))
   })
 })

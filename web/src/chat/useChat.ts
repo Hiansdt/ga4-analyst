@@ -1,12 +1,13 @@
-// Owns the conversation state and its connection to the API. Components only read it and call ask/newChat.
+// Owns one dataset's conversation state and its connection to the API. Components only read it and call ask/newChat.
 
 import { ref } from 'vue'
 import { askQuestion, ConversationGone, createConversation, loadConversation } from '../api/client'
 import { applyEvent, newTurn, replayTurn, type Turn } from './turn'
 
-const STORAGE_KEY = 'ga4-analyst.conversation'
+// Each dataset remembers its own chat, so switching back to a dataset restores it.
+const storageKey = (dataset: string) => `analyst.conversation.${dataset}`
 
-export function useChat() {
+export function useChat(dataset: string) {
   const turns = ref<Turn[]>([])
   const busy = ref(false)
   const notice = ref<string | null>(null)
@@ -16,13 +17,18 @@ export function useChat() {
   // WHY: any network or 5xx error during restore forgets the saved conversation for good
   // DONE-WHEN: with GET /api/conversations/{id} returning 500, the id stays in localStorage and a "Couldn't load your chat" notice with a retry is shown
   async function restore(): Promise<void> {
-    const saved = readSavedId()
+    const saved = readSavedId(dataset)
     if (!saved) return
     try {
-      turns.value = (await loadConversation(saved)).map(replayTurn)
+      const conversation = await loadConversation(saved)
+      if (conversation.dataset !== dataset) {
+        saveId(dataset, null)
+        return
+      }
+      turns.value = conversation.turns.map(replayTurn)
       conversationId = saved
     } catch (error) {
-      saveId(null)
+      saveId(dataset, null)
       if (error instanceof ConversationGone) notice.value = 'Your previous chat expired, so this is a new one.'
     }
   }
@@ -65,15 +71,15 @@ export function useChat() {
   function newChat(): void {
     if (busy.value) return
     conversationId = null
-    saveId(null)
+    saveId(dataset, null)
     turns.value = []
     notice.value = null
   }
 
   async function currentConversation(): Promise<string> {
     if (!conversationId) {
-      conversationId = await createConversation()
-      saveId(conversationId)
+      conversationId = await createConversation(dataset)
+      saveId(dataset, conversationId)
     }
     return conversationId
   }
@@ -86,18 +92,18 @@ export function useChat() {
 }
 
 // Remembering the chat across reloads is a convenience; storage can be unavailable (private mode).
-function readSavedId(): string | null {
+function readSavedId(dataset: string): string | null {
   try {
-    return localStorage.getItem(STORAGE_KEY)
+    return localStorage.getItem(storageKey(dataset))
   } catch {
     return null
   }
 }
 
-function saveId(id: string | null): void {
+function saveId(dataset: string, id: string | null): void {
   try {
-    if (id) localStorage.setItem(STORAGE_KEY, id)
-    else localStorage.removeItem(STORAGE_KEY)
+    if (id) localStorage.setItem(storageKey(dataset), id)
+    else localStorage.removeItem(storageKey(dataset))
   } catch {
     // Not remembering the chat is acceptable.
   }

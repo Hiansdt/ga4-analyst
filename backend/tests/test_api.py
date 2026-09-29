@@ -16,25 +16,51 @@ def answer(value: str) -> ModelTurn:
     return ModelTurn(content=[text(value)], stop_reason="end_turn")
 
 
-def make_client(
-    *turns: ModelTurn, questions_per_minute: int = 100, max_question_chars: int = 4000, max_turns: int = 30
-) -> tuple[TestClient, ScriptedModel]:
-    model = ScriptedModel(*turns)
-    agent = Agent(
+DATASETS = [
+    {"id": "shop", "name": "Test Shop", "start": "2024-01-01", "end": "2024-03-31", "example_questions": ["Revenue?"]},
+    {
+        "id": "bikes",
+        "name": "Bike Rentals",
+        "start": "2023-01-01",
+        "end": "2023-12-31",
+        "example_questions": ["Trips?"],
+    },
+]
+
+
+def make_agent(model: ScriptedModel) -> Agent:
+    return Agent(
         model=model,
         tools=ToolRegistry([run_sql_tool(FakeRunner(daily_result(3)), preview_rows=10)]),
         system_prompt="test",
         max_steps=5,
     )
+
+
+def make_client(
+    *turns: ModelTurn,
+    bike_turns: tuple[ModelTurn, ...] = (),
+    questions_per_minute: int = 100,
+    max_question_chars: int = 4000,
+    max_turns: int = 30,
+) -> tuple[TestClient, ScriptedModel]:
+    """A client with two datasets; `turns` script the shop model, `bike_turns` the bikes model."""
+    model = ScriptedModel(*turns)
     app = create_app(
-        agent,
+        {"shop": make_agent(model), "bikes": make_agent(ScriptedModel(*bike_turns))},
         InMemoryStore(),
+        datasets=DATASETS,
         limiter=RateLimiter(limit=questions_per_minute, window_s=60),
         max_question_chars=max_question_chars,
         max_turns=max_turns,
-        dataset={"name": "Test Shop", "start": "2024-01-01", "end": "2024-03-31", "example_questions": ["Revenue?"]},
     )
     return TestClient(app), model
+
+
+def new_conversation(client: TestClient, dataset: str = "shop") -> str:
+    response = client.post("/api/conversations", json={"dataset": dataset})
+    assert response.status_code == 201
+    return response.json()["id"]
 
 
 def sse_events(body: str) -> list[tuple[str, dict]]:
@@ -55,7 +81,7 @@ def ask(client: TestClient, conversation_id: str, question: str) -> list[tuple[s
 def test_a_question_streams_typed_events():
     sql_turn = ModelTurn(content=[tool_use("a", "run_sql", sql="SELECT 1", purpose="Check")], stop_reason="tool_use")
     client, _ = make_client(sql_turn, answer("There were 3 days."))
-    conversation_id = client.post("/api/conversations").json()["id"]
+    conversation_id = new_conversation(client)
 
     events = ask(client, conversation_id, "How many days?")
 
@@ -71,7 +97,7 @@ def test_a_question_streams_typed_events():
 
 def test_follow_up_questions_send_the_previous_turns_to_the_model():
     client, model = make_client(answer("Hello."), answer("Still here."))
-    conversation_id = client.post("/api/conversations").json()["id"]
+    conversation_id = new_conversation(client)
 
     ask(client, conversation_id, "Hi")
     ask(client, conversation_id, "Again?")
@@ -81,7 +107,7 @@ def test_follow_up_questions_send_the_previous_turns_to_the_model():
 
 def test_a_reloaded_conversation_replays_the_same_events():
     client, _ = make_client(answer("Hello."))
-    conversation_id = client.post("/api/conversations").json()["id"]
+    conversation_id = new_conversation(client)
     streamed = ask(client, conversation_id, "Hi")
 
     stored = client.get(f"/api/conversations/{conversation_id}").json()
@@ -100,7 +126,7 @@ def test_unknown_conversations_are_404():
 
 def test_empty_questions_are_rejected():
     client, _ = make_client()
-    conversation_id = client.post("/api/conversations").json()["id"]
+    conversation_id = new_conversation(client)
 
     response = client.post(f"/api/conversations/{conversation_id}/messages", json={"content": "  "})
 
@@ -131,7 +157,7 @@ def test_clients_are_told_apart_by_the_address_the_proxy_appends():
 
 def test_questions_over_the_length_limit_never_reach_the_model():
     client, _ = make_client(max_question_chars=10)  # no scripted turns: calling the model would fail
-    conversation_id = client.post("/api/conversations").json()["id"]
+    conversation_id = new_conversation(client)
 
     response = post_question(client, conversation_id, "x" * 11)
 
@@ -140,7 +166,7 @@ def test_questions_over_the_length_limit_never_reach_the_model():
 
 def test_a_full_conversation_asks_for_a_new_one():
     client, _ = make_client(answer("Hello."), max_turns=1)
-    conversation_id = client.post("/api/conversations").json()["id"]
+    conversation_id = new_conversation(client)
     ask(client, conversation_id, "Hi")
 
     response = post_question(client, conversation_id, "Again?")
@@ -149,12 +175,25 @@ def test_a_full_conversation_asks_for_a_new_one():
     assert "new chat" in response.json()["detail"]
 
 
-def test_the_ui_can_ask_which_dataset_it_is_talking_to():
+def test_the_ui_can_list_the_datasets_in_their_configured_order():
     client, _ = make_client()
 
-    assert client.get("/api/dataset").json() == {
-        "name": "Test Shop",
-        "start": "2024-01-01",
-        "end": "2024-03-31",
-        "example_questions": ["Revenue?"],
-    }
+    assert client.get("/api/datasets").json() == DATASETS
+
+
+def test_a_conversation_belongs_to_its_dataset():
+    client, shop_model = make_client(bike_turns=(answer("1,204 trips."),))
+    conversation_id = new_conversation(client, "bikes")
+
+    events = ask(client, conversation_id, "How many trips?")
+
+    assert events[0] == ("text_delta", {"text": "1,204 trips."})
+    assert shop_model.requests == []
+    assert client.get(f"/api/conversations/{conversation_id}").json()["dataset"] == "bikes"
+
+
+def test_conversations_need_a_known_dataset():
+    client, _ = make_client()
+
+    assert client.post("/api/conversations", json={"dataset": "weather"}).status_code == 422
+    assert client.post("/api/conversations").status_code == 422

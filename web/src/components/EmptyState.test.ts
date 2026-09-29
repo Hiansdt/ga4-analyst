@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import EmptyState from './EmptyState.vue'
 
 const dataset = {
+  id: 'ga4',
   name: 'Google Merchandise Store',
   start: '2020-11-01',
   end: '2021-01-31',

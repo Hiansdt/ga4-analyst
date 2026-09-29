@@ -1,23 +1,31 @@
 import { SseParser } from './sse'
 import type { AgentEvent, DatasetInfo, StoredTurn } from './types'
 
+export interface StoredConversation {
+  dataset: string
+  turns: StoredTurn[]
+}
+
 export class ConversationGone extends Error {}
 
 // Error messages are shown to business users as is, so they carry no status codes.
 const UNAVAILABLE = 'The analyst is unavailable right now. Please try again in a minute.'
 
-export async function loadDataset(): Promise<DatasetInfo> {
-  return (await request('/api/dataset')).json()
+export async function loadDatasets(): Promise<DatasetInfo[]> {
+  return (await request('/api/datasets')).json()
 }
 
-export async function createConversation(): Promise<string> {
-  const response = await request('/api/conversations', { method: 'POST' })
+export async function createConversation(dataset: string): Promise<string> {
+  const response = await request('/api/conversations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset }),
+  })
   return (await response.json()).id
 }
 
-export async function loadConversation(id: string): Promise<StoredTurn[]> {
-  const response = await request(`/api/conversations/${id}`)
-  return (await response.json()).turns
+export async function loadConversation(id: string): Promise<StoredConversation> {
+  return (await request(`/api/conversations/${id}`)).json()
 }
 
 /** Post a question and call onEvent for every event of the streamed answer. */

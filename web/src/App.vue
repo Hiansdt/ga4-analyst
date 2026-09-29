@@ -1,41 +1,34 @@
 <script setup lang="ts">
-import { nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { loadDataset } from './api/client'
+import { computed, onMounted, ref, watch } from 'vue'
+import { loadDatasets } from './api/client'
 import type { DatasetInfo } from './api/types'
-import { useChat } from './chat/useChat'
-import ChatComposer from './components/ChatComposer.vue'
-import EmptyState from './components/EmptyState.vue'
-import TurnView from './components/TurnView.vue'
+import { pickDataset } from './chat/datasets'
+import ChatView from './components/ChatView.vue'
+import DatasetSwitcher from './components/DatasetSwitcher.vue'
 
-const { turns, busy, notice, restore, ask, newChat } = useChat()
-const end = useTemplateRef<HTMLDivElement>('end')
-
-const dataset = ref<DatasetInfo | null>(null)
+const datasets = ref<DatasetInfo[]>([])
+const selectedId = ref<string | null>(null)
+const busy = ref(false)
+const failed = ref(false)
+const selected = computed(() => datasets.value.find((dataset) => dataset.id === selectedId.value) ?? null)
 
 onMounted(async () => {
-  restore()
   try {
-    dataset.value = await loadDataset()
-    document.title = `${dataset.value.name} · Analyst`
+    datasets.value = await loadDatasets()
+    selectedId.value = pickDataset(location.search, datasets.value)
   } catch {
-    // The page works without it; only the dataset name and example questions are missing.
+    failed.value = true
   }
 })
 
-// TODO(ui-harden): Auto-scroll only when the reader is already near the bottom
-// WHY: scrolling up to read SQL mid-answer gets pulled back down on every text delta
-// DONE-WHEN: scrolled 400px above the bottom while an answer streams, the view stays put; at the bottom it keeps following
-
-// TODO(ui-a11y): Replace the page-wide live region with short status announcements
-// WHY: the whole transcript is aria-live and the answer re-renders on every text delta, so screen readers repeat fragments
-// DONE-WHEN: with Orca or NVDA, asking a question announces "Running query" and "Answer ready" once each instead of the streaming text
-
-// Follow the answer as it streams in.
-watch(
-  () => turns.value.at(-1),
-  () => nextTick(() => end.value?.scrollIntoView({ block: 'end' })),
-  { deep: true },
-)
+// The URL names the dataset, so a link opens the same one.
+watch(selected, (dataset) => {
+  if (!dataset) return
+  const url = new URL(location.href)
+  url.searchParams.set('dataset', dataset.id)
+  history.replaceState(null, '', url)
+  document.title = `${dataset.name} · Analyst`
+})
 </script>
 
 <template>
@@ -43,31 +36,21 @@ watch(
     <div class="brand">
       <span class="mark" aria-hidden="true" />
       Analyst
-      <span v-if="dataset" class="dataset">{{ dataset.name }}</span>
     </div>
-    <button v-if="turns.length" type="button" class="new-chat" :disabled="busy" @click="newChat">New chat</button>
+    <DatasetSwitcher
+      v-if="datasets.length > 1 && selectedId"
+      :datasets="datasets"
+      :selected="selectedId"
+      :disabled="busy"
+      @select="selectedId = $event"
+    />
+    <div id="masthead-actions" class="actions" />
   </header>
 
-  <main class="page">
-    <p v-if="notice" class="notice" role="status">{{ notice }}</p>
-    <EmptyState v-if="!turns.length" :dataset="dataset" @ask="ask" />
-    <section v-else class="log" role="log" aria-live="polite">
-      <TurnView
-        v-for="(turn, index) in turns"
-        :key="index"
-        :turn="turn"
-        :show-follow-ups="index === turns.length - 1 && !busy"
-        @ask="ask"
-      />
-    </section>
-    <div ref="end" />
-  </main>
-
-  <footer class="dock">
-    <div class="page">
-      <ChatComposer :busy="busy" @ask="ask" />
-    </div>
-  </footer>
+  <p v-if="failed" class="unavailable" role="alert">
+    The analyst is unavailable right now. Please try again in a minute.
+  </p>
+  <ChatView v-if="selected" :key="selected.id" :dataset="selected" @busy="busy = $event" />
 </template>
 
 <style scoped>
@@ -76,9 +59,10 @@ watch(
   top: 0;
   z-index: 2;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  padding: 0.9rem 1.25rem;
+  gap: 0.6rem 1rem;
+  padding: 0.75rem 1.25rem;
   background: color-mix(in srgb, var(--surface) 88%, transparent);
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--rule);
@@ -94,13 +78,6 @@ watch(
   letter-spacing: 0.01em;
 }
 
-.dataset {
-  font-weight: 500;
-  color: var(--ink-muted);
-  padding-left: 0.55rem;
-  border-left: 1px solid var(--rule-strong);
-}
-
 .mark {
   width: 14px;
   height: 14px;
@@ -108,45 +85,18 @@ watch(
   background: linear-gradient(135deg, var(--accent) 50%, var(--accent-2) 50%);
 }
 
-.new-chat {
-  font-family: var(--font-ui);
-  font-size: 0.8rem;
-  color: var(--ink-secondary);
-  background: transparent;
-  border: 1px solid var(--rule-strong);
-  border-radius: 7px;
-  padding: 0.35rem 0.75rem;
-  cursor: pointer;
+.actions {
+  margin-left: auto;
 }
 
-.new-chat:hover:not(:disabled) {
-  color: var(--ink);
-  border-color: var(--ink-secondary);
-}
-
-.page {
+.unavailable {
   width: min(46rem, 100% - 2rem);
-  margin-inline: auto;
-}
-
-main.page {
-  padding-bottom: 9rem;
-}
-
-.notice {
+  margin: 2rem auto;
   font-family: var(--font-ui);
-  font-size: 0.85rem;
-  color: var(--ink-secondary);
-  background: var(--surface-sunken);
+  font-size: 0.9rem;
+  color: var(--warning-ink);
+  background: var(--warning-wash);
   border-radius: 6px;
-  padding: 0.6rem 0.8rem;
-  margin-top: 1.25rem;
-}
-
-.dock {
-  position: fixed;
-  inset: auto 0 0;
-  padding: 1rem 0 1.25rem;
-  background: linear-gradient(to top, var(--surface) 70%, transparent);
+  padding: 0.7rem 0.9rem;
 }
 </style>
